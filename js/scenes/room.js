@@ -1,185 +1,473 @@
 // 나비효과 게임 - 방 씬 (scenes/room.js)
-// 1단계: 6개 오브젝트 + 현관문 배치 / 마우스 오버 글로우 / 클릭 판정.
-// (다음 단계) 순서 상태머신(solvedCount 순서 위반 감지) → 미니게임 연결 → 엔딩.
+// 순서 상태머신 + 1단계(첫 화면) 상호작용 + 물 차오름 페널티.
 //
-// 좌표는 모두 게임 가상 해상도(GW=680, GH=480) 기준입니다.
-// 클릭/오버 판정은 mouseX 대신 반드시 vmouseX()/vmouseY()를 씁니다.
+// 정답 순서: 싱크대(sink) → 분리수거(recycle) → 컴퓨터(computer)
+//            → 텀블러(tumbler) → TV(tv) → 조명(light)
+// solvedCount(0~6) = 진행 단계. 단계별 배경 이미지(room_bg .. room_bg5).
+//   6: 조명까지 끔 → 코드로 암전 + 현관문만 빛남.
 //
-// 씬 함수 세트:
-//   enterRoom()         : 방 진입 시 오브젝트 구성/초기화
-//   updateRoom()        : 매 프레임 로직 + 드로잉
-//   roomMousePressed()  : 클릭 판정
-//   roomKeyPressed()    : 키 입력
+// === 이번 작업: 1단계(solvedCount===0) 첫 화면 ===
+//   클릭 반응:
+//     - 수도꼭지(sink): 물 멈추고 1단계 완료 (임시 통과; 추후 미니게임 연결)
+//     - 분리수거(recycle): "아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!" 팝업
+//     - 컴퓨터(computer): "조금 이따 게임하려고 켜둔 거야." 팝업
+//     - TV(tv): "9시 뉴스 봐야 해!" 말풍선 (TV 위)
+//     - 조명(light): 화면 암전 → 5초 후 "불은 나갈 때 끄도록 하자…" 팝업 후 복귀
+//     - 현관문(door): 그 시점 단계 엔딩 (0단계=지구멸망)
+//   물 페널티(1단계 한정):
+//     - 진입 5초 후 물이 화면 하단부터 차오르기 시작
+//     - 10초에 걸쳐 일정 속도로 차오름 → 다 차면 익사(바다생물 + 리스타트)
+//     - 수도꼭지 클릭 시 물 멈춤
+//
+// 좌표는 게임 가상 해상도(GW=680, GH=480) 기준. 클릭 판정은 vmouseX()/vmouseY().
+
+const ROOM_ORDER = ['sink', 'recycle', 'computer', 'tumbler', 'tv', 'light'];
 
 // ── 방 전용 전역 변수 ──
-let roomObjects = [];     // 클릭 가능한 오브젝트 목록
-let roomHoverId = null;   // 현재 마우스가 올라간 오브젝트 id
-let roomLastClicked = ''; // 마지막으로 클릭한 오브젝트 라벨 (확인용 표시)
-let roomFlash = 0;        // 클릭 피드백 깜빡임 타이머
+let roomBgs = {};
+let roomObjects = [];
+let roomHoverId = null;
+let roomEnding = null;
+let roomDebugBoxes = false;
 
-// 오브젝트 정의 (center x, y + w, h). rectMode(CENTER) 기준.
-//   id      : 내부 식별자 (미니게임 연결 키로도 사용 예정)
-//   label   : 화면 표시 이름
-//   x,y,w,h : 위치/크기
-//   col     : 기본 색
-//   needSolved : 이 값(클리어 수) 이상이어야 활성화. 0이면 항상 활성.
-//   alwaysOn   : true면 항상 클릭 가능 (현관문)
+// 팝업 / 말풍선
+let roomPopup = '';        // 화면 중단 팝업 텍스트
+let roomPopupT = 0;        // 팝업 남은 프레임
+let roomBubble = '';       // TV 위 말풍선 텍스트
+let roomBubbleT = 0;
+
+// 조명 임시 암전(1단계에서 조명 누름)
+let lightDarkT = 0;        // >0이면 암전 중. 카운트다운.
+
+// 물 페널티 상태
+let roomEnterFrame = 0;    // 방 진입 시각(frameCount)
+let waterStarted = false;  // 물이 차기 시작했나
+let waterStartFrame = 0;   // 물 시작 시각
+let waterLevel = 0;        // 0~1 (화면 하단부터 차오른 비율)
+let drowned = false;       // 다 잠겼나
+const WATER_DELAY = 300;   // 진입 후 5초(60fps*5)
+const WATER_RISE = 600;    // 10초에 걸쳐 차오름
+
 function buildRoomObjects() {
   return [
-    { id: 'light',   label: '조명',     x: 340, y: 26,  w: 96,  h: 26,  col: [196, 180, 120], needSolved: 0 },
-    { id: 'tv',      label: 'TV',       x: 340, y: 176, w: 260, h: 170, col: [70, 80, 100],   needSolved: 0 },
-    { id: 'sink',    label: '싱크대',   x: 64,  y: 250, w: 128, h: 96,  col: [120, 140, 150], needSolved: 0 },
-    { id: 'recycle', label: '분리수거', x: 112, y: 441, w: 96,  h: 78,  col: [90, 150, 110],  needSolved: 0 },
-    { id: 'computer',label: '컴퓨터',   x: 540, y: 250, w: 128, h: 96,  col: [80, 110, 150],  needSolved: 0 },
-    // 텀블러: 싱크대 위에 올림 (싱크대 윗면 y=202에 닿게). 3단계 클리어 전까지 비활성
-    { id: 'tumbler', label: '텀블러',   x: 64,  y: 170, w: 40,  h: 64,  col: [150, 120, 90],  needSolved: 3 },
-    // 현관문: 항상 클릭 가능. 가로 64, 최하단이 바닥 경계선(y=358)에 닿게, 우측 벽에 붙임.
-    { id: 'door',    label: '현관문',   x: 648, y: 240, w: 64,  h: 236, col: [110, 84, 60],   needSolved: 0, alwaysOn: true },
+    { id: 'light',   label: '조명',     x: 562, y: 199, w: 12,  h: 20  },
+    { id: 'tv',      label: 'TV',       x: 299, y: 225, w: 148, h: 99  },
+    { id: 'sink',    label: '싱크대',   x: 102, y: 273, w: 170, h: 146 },
+    { id: 'recycle', label: '분리수거', x: 107, y: 395, w: 147, h: 81  },
+    { id: 'computer',label: '컴퓨터',   x: 491, y: 229, w: 70,  h: 47  },
+    { id: 'tumbler', label: '텀블러',   x: 61,  y: 145, w: 23,  h: 40  },
+    { id: 'door',    label: '현관문',   x: 623, y: 213, w: 86,  h: 230 },
   ];
 }
 
-// 오브젝트 활성화 여부 (solvedCount 기준)
-function isObjEnabled(o) {
-  if (o.alwaysOn) return true;
-  return solvedCount >= (o.needSolved || 0);
+function nextCorrectId() {
+  return solvedCount < ROOM_ORDER.length ? ROOM_ORDER[solvedCount] : null;
 }
 
-// ── 방 진입(초기화) ──
+function isObjEnabled(o) {
+  if (o.id === 'door') return true;
+  let idx = ROOM_ORDER.indexOf(o.id);
+  if (idx < solvedCount) return false;
+  if (solvedCount >= ROOM_ORDER.length) return false;
+  return true;
+}
+
+function isBlackout() { return solvedCount >= ROOM_ORDER.length; }
+
 function enterRoom() {
+  if (!roomBgs[0]) {
+    roomBgs[0] = loadImage('assets/room_bg.png');
+    roomBgs[1] = loadImage('assets/room_bg1.png');
+    roomBgs[2] = loadImage('assets/room_bg2.png');
+    roomBgs[3] = loadImage('assets/room_bg3.png');
+    roomBgs[4] = loadImage('assets/room_bg4.png');
+    roomBgs[5] = loadImage('assets/room_bg5.png');
+  }
   roomObjects = buildRoomObjects();
   roomHoverId = null;
-  roomLastClicked = '';
-  roomFlash = 0;
+  roomEnding = null;
+  roomPopup = ''; roomPopupT = 0;
+  roomBubble = ''; roomBubbleT = 0;
+  lightDarkT = 0;
+  solvedCount = 0;
+  // 물 페널티 초기화
+  roomEnterFrame = frameCount;
+  waterStarted = false;
+  waterStartFrame = 0;
+  waterLevel = 0;
+  drowned = false;
 }
 
-// ── 매 프레임: 로직 + 드로잉 ──
+// 1단계에서만 물 페널티 작동
+function waterActive() { return solvedCount === 0 && !roomEnding; }
+
+// 미니게임 클리어 후 방으로 복귀 (solvedCount는 그대로 유지)
+function roomReenterAfterMinigame() {
+  roomObjects = buildRoomObjects();
+  roomHoverId = null;
+  roomEnding = null;
+  roomPopup = ''; roomPopupT = 0;
+  roomBubble = ''; roomBubbleT = 0;
+  lightDarkT = 0;
+  // 물 페널티는 1단계(solvedCount===0)에서만 작동하므로, 단계가 올라갔으면 자동으로 꺼짐
+  roomEnterFrame = frameCount;
+  waterStarted = false;
+  waterStartFrame = 0;
+  waterLevel = 0;
+  drowned = false;
+}
+
 function updateRoom() {
-  // 1) 오버 판정 (활성 오브젝트만)
+  if (roomEnding) { drawEnding(); return; }
+
+  // ── 익사 상태: 물 가득 + 바다생물 + 리스타트 ──
+  if (drowned) { drawDrowned(); return; }
+
+  // ── 물 타이머 갱신 (1단계 한정) ──
+  if (waterActive()) {
+    let elapsed = frameCount - roomEnterFrame;
+    if (!waterStarted && elapsed >= WATER_DELAY) {
+      waterStarted = true;
+      waterStartFrame = frameCount;
+    }
+    if (waterStarted) {
+      let we = frameCount - waterStartFrame;
+      waterLevel = constrain(we / WATER_RISE, 0, 1);
+      if (waterLevel >= 1) { drowned = true; }
+    }
+  }
+
+  // 타이머 감소
+  if (roomPopupT > 0) roomPopupT--;
+  if (roomBubbleT > 0) roomBubbleT--;
+  if (lightDarkT > 0) {
+    lightDarkT--;
+    // 암전 끝나는 순간 팝업
+    if (lightDarkT === 0) {
+      roomPopup = '불은 나갈 때 끄도록 하자…';
+      roomPopupT = 180;
+    }
+  }
+
+  // 오버 판정
   roomHoverId = null;
   let mx = vmouseX(), my = vmouseY();
   for (let o of roomObjects) {
-    if (!isObjEnabled(o)) continue;
     if (abs(mx - o.x) <= o.w / 2 && abs(my - o.y) <= o.h / 2) {
+      if (isBlackout() && o.id !== 'door') continue;
+      if (!isBlackout() && !isObjEnabled(o)) continue;
       roomHoverId = o.id;
     }
   }
-  if (roomFlash > 0) roomFlash--;
 
-  // 2) 드로잉
-  drawRoomBackground();
+  // ── 드로잉 ──
+  drawStageBackground();
+
+  // 조명 임시 암전 중이면 화면 덮기 (물/오브젝트보다 위)
+  if (lightDarkT > 0) {
+    push(); rectMode(CORNER); noStroke(); fill(0); rect(0, 0, GW, GH); pop();
+    drawRoomHud();
+    return;
+  }
+
   for (let o of roomObjects) drawRoomObject(o);
+
+  // 물 차오름
+  if (waterStarted) drawWater();
+
+  // TV 말풍선
+  if (roomBubbleT > 0) drawBubble();
+
   drawRoomHud();
 }
 
-// 방 배경: 벽 + 바닥
-function drawRoomBackground() {
-  noStroke();
-  rectMode(CORNER);
-  // 벽
-  fill(54, 52, 64);
-  rect(0, 0, GW, 360);
-  // 바닥
-  fill(40, 36, 44);
-  rect(0, 360, GW, GH - 360);
-  // 바닥 경계선
-  fill(28, 26, 32);
-  rect(0, 358, GW, 4);
-  rectMode(CENTER);
-}
-
-// 오브젝트 하나 그리기 (도형 + 라벨 + 오버 글로우)
-function drawRoomObject(o) {
-  let enabled = isObjEnabled(o);
-  let hovered = (roomHoverId === o.id);
-
-  // 글로우 (오버 + 활성일 때만)
-  if (hovered && enabled) {
-    noFill();
-    for (let g = 3; g >= 1; g--) {
-      stroke(255, 240, 140, 60 / g);
-      strokeWeight(g * 4);
-      rect(o.x, o.y, o.w + g * 6, o.h + g * 6, 6);
+function drawStageBackground() {
+  if (isBlackout()) {
+    background(0);
+    push(); rectMode(CENTER); noStroke();
+    let door = roomObjects.find(o => o.id === 'door');
+    if (door) {
+      for (let g = 5; g >= 1; g--) { fill(255, 235, 170, 10); rect(door.x, door.y, door.w + g * 8, door.h + g * 4, 6); }
+      fill(20, 16, 10); rect(door.x, door.y, door.w, door.h);
     }
+    pop();
+    return;
   }
-
-  // 본체
-  noStroke();
-  if (enabled) {
-    // 오버 시 살짝 밝게
-    let b = hovered ? 35 : 0;
-    fill(o.col[0] + b, o.col[1] + b, o.col[2] + b);
+  let img = roomBgs[solvedCount] || roomBgs[0];
+  if (img && img.width > 1) {
+    push(); imageMode(CORNER); image(img, 0, 0, GW, GH); pop();
   } else {
-    // 비활성: 어둡게
-    fill(o.col[0] * 0.4, o.col[1] * 0.4, o.col[2] * 0.4);
-  }
-  rect(o.x, o.y, o.w, o.h, 6);
-
-  // 테두리
-  stroke(enabled ? 200 : 90, enabled ? 200 : 90, enabled ? 210 : 100, 120);
-  strokeWeight(1.5);
-  noFill();
-  rect(o.x, o.y, o.w, o.h, 6);
-  noStroke();
-
-  // 라벨
-  fill(enabled ? 245 : 130);
-  textAlign(CENTER, CENTER);
-  textStyle(BOLD);
-  textSize(13);
-  text(o.label, o.x, o.y);
-  textStyle(NORMAL);
-
-  // 비활성 안내 (텀블러 등)
-  if (!enabled) {
-    fill(220, 200, 120, 200);
-    textSize(9);
-    text('잠김 (' + o.needSolved + '개 클리어 후)', o.x, o.y + o.h / 2 + 10);
+    push(); rectMode(CORNER); noStroke(); fill(40, 38, 48); rect(0, 0, GW, GH);
+    fill(180); textAlign(CENTER, CENTER); textSize(12); text('배경 불러오는 중...', GW / 2, GH / 2); pop();
   }
 }
 
-// 상단 HUD + 클릭 피드백
-function drawRoomHud() {
-  // 진행도
+function drawRoomObject(o) {
+  let hovered = (roomHoverId === o.id);
+  if (!hovered) { if (roomDebugBoxes) drawDebugBox(o); return; }
+  push(); rectMode(CENTER); noFill();
+  let warm = (isBlackout() && o.id === 'door');
+  for (let g = 4; g >= 1; g--) {
+    if (warm) stroke(255, 220, 120, 70 / g); else stroke(255, 240, 150, 50 / g);
+    strokeWeight(g * 4);
+    rect(o.x, o.y, o.w + g * 5, o.h + g * 5, 8);
+  }
+  noStroke(); fill(255, 245, 180, warm ? 40 : 22); rect(o.x, o.y, o.w, o.h, 6);
+  pop();
+  if (roomDebugBoxes) drawDebugBox(o);
+}
+
+function drawDebugBox(o) {
+  push(); rectMode(CENTER); noFill();
+  stroke(isObjEnabled(o) ? color(120, 220, 160) : color(220, 120, 120));
+  strokeWeight(1); rect(o.x, o.y, o.w, o.h);
+  noStroke(); fill(255); textAlign(CENTER, CENTER); textSize(9); text(o.label, o.x, o.y); pop();
+}
+
+// ── 물 차오름 이펙트 ──
+function drawWater() {
+  let topY = GH * (1 - waterLevel); // 수면 y
+  push();
+  rectMode(CORNER);
   noStroke();
-  fill(235, 235, 245);
-  textAlign(LEFT, TOP);
-  textStyle(BOLD);
-  textSize(14);
-  text('해결: ' + solvedCount + ' / 5', 14, 12);
+  // 물 본체 (반투명 파랑, 위로 갈수록 옅게)
+  for (let y = topY; y < GH; y += 4) {
+    let d = (y - topY) / (GH - topY + 1);
+    fill(40, 110, 170, 90 + d * 70);
+    rect(0, y, GW, 4);
+  }
+  // 수면 물결 (사인파)
+  fill(180, 220, 240, 150);
+  for (let x = 0; x < GW; x += 6) {
+    let wy = topY + sin((x * 0.05) + frameCount * 0.15) * 3;
+    rect(x, wy, 6, 3);
+  }
+  // 기포 몇 개
+  fill(220, 240, 250, 120);
+  for (let i = 0; i < 8; i++) {
+    let bx = (i * 97 + frameCount * 1.3) % GW;
+    let by = topY + ((i * 53 + frameCount * 2) % (GH - topY + 1));
+    rect(bx, by, 3, 3);
+  }
+  pop();
+}
+
+function drawRoomHud() {
+  push(); noStroke();
+  fill(isBlackout() ? color(120, 110, 90) : color(235, 235, 245));
+  textAlign(LEFT, TOP); textStyle(BOLD); textSize(14);
+  text('해결: ' + solvedCount + ' / 6', 14, 12);
   textStyle(NORMAL);
 
-  // 클릭 확인 피드백 (임시 — 미니게임 연결 전까지 동작 확인용)
-  if (roomFlash > 0 && roomLastClicked) {
-    let a = map(roomFlash, 0, 30, 0, 255);
-    fill(255, 240, 140, a);
-    textAlign(CENTER, CENTER);
-    textSize(16);
-    text('클릭: ' + roomLastClicked, GW / 2, GH - 30);
+  // 중단부 팝업
+  if (roomPopupT > 0) {
+    let a = min(255, roomPopupT * 4);
+    rectMode(CENTER); noStroke();
+    fill(0, 0, 0, a * 0.7);
+    let w = textWidth ? 0 : 0; // placeholder
+    textSize(16); textAlign(CENTER, CENTER);
+    let tw = max(260, textWidth(roomPopup) + 40);
+    fill(20, 20, 26, a * 0.85);
+    rect(GW / 2, GH / 2, tw, 46, 8);
+    fill(255, 240, 180, a);
+    text(roomPopup, GW / 2, GH / 2);
   }
+  pop();
+}
+
+// TV 위 말풍선
+function drawBubble() {
+  let tv = roomObjects.find(o => o.id === 'tv');
+  if (!tv) return;
+  let a = min(255, roomBubbleT * 5);
+  let bx = tv.x, by = tv.y - tv.h / 2 - 26;
+  push(); rectMode(CENTER); noStroke();
+  textSize(14); textAlign(CENTER, CENTER);
+  let tw = max(120, textWidth(roomBubble) + 28);
+  fill(255, 255, 255, a);
+  rect(bx, by, tw, 34, 10);
+  // 꼬리
+  triangle(bx - 8, by + 16, bx + 8, by + 16, bx, by + 28);
+  fill(30, 30, 40, a);
+  text(roomBubble, bx, by);
+  pop();
+}
+
+// ── 익사 화면 ──
+function drawDrowned() {
+  push();
+  // 전체 물
+  background(20, 70, 120);
+  rectMode(CORNER); noStroke();
+  for (let y = 0; y < GH; y += 4) {
+    fill(30, 90 + (y / GH) * 40, 150 + (y / GH) * 40, 60);
+    rect(0, y, GW, 4);
+  }
+  // 바다생물 (코드 픽셀아트)
+  drawSeaCreatures();
+  // 안내
+  fill(255, 255, 255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(26);
+  text('집이 물에 잠겼습니다', GW / 2, GH / 2 - 20);
+  textStyle(NORMAL); textSize(13); fill(220, 235, 245);
+  text('지구가 멸망하기 전에, 집이 먼저 잠겼습니다.', GW / 2, GH / 2 + 12);
+  let blink = map(abs(sin(frameCount * 0.05)), 0, 1, 110, 230);
+  fill(255, 255, 255, blink); textSize(14);
+  text('Press any key or click to restart', GW / 2, GH - 40);
+  pop();
+}
+
+// 고래 + 물고기 + 불가사리 픽셀아트 (떠다님)
+function drawSeaCreatures() {
+  push(); noStroke();
+  // 고래 (왼쪽에서 천천히 이동)
+  let wx = (frameCount * 0.4) % (GW + 200) - 100;
+  let wy = GH * 0.35 + sin(frameCount * 0.02) * 12;
+  drawWhale(wx, wy);
+  // 물고기 떼 (오른쪽→왼쪽)
+  for (let i = 0; i < 5; i++) {
+    let fx = GW - ((frameCount * (1.0 + i * 0.3) + i * 130) % (GW + 120)) + 60;
+    let fy = GH * 0.2 + i * 55 + sin(frameCount * 0.04 + i) * 8;
+    drawFish(fx, fy, i % 2 === 0 ? color(255, 180, 80) : color(120, 200, 220));
+  }
+  // 불가사리 (바닥에 고정)
+  drawStarfish(GW * 0.2, GH - 30, color(255, 140, 90));
+  drawStarfish(GW * 0.7, GH - 22, color(255, 170, 110));
+  pop();
+}
+
+function drawWhale(x, y) {
+  push(); translate(x, y); noStroke();
+  fill(90, 120, 160);
+  rect(0, 0, 90, 40, 18);          // 몸통
+  triangle(85, 20, 110, 5, 110, 35); // 꼬리
+  fill(150, 175, 200);
+  rect(8, 22, 70, 16, 8);          // 배 (밝은색)
+  fill(20, 30, 45);
+  ellipse(22, 14, 6, 6);           // 눈
+  // 물줄기
+  fill(180, 220, 240, 160);
+  rect(30, -16, 4, 14); rect(36, -22, 4, 20); rect(42, -16, 4, 14);
+  pop();
+}
+
+function drawFish(x, y, c) {
+  push(); translate(x, y); noStroke();
+  fill(c);
+  ellipse(0, 0, 26, 16);           // 몸
+  triangle(10, 0, 22, -8, 22, 8);  // 꼬리
+  fill(255); ellipse(-7, -2, 5, 5);
+  fill(0); ellipse(-7, -2, 2, 2);  // 눈
+  pop();
+}
+
+function drawStarfish(x, y, c) {
+  push(); translate(x, y); fill(c); noStroke();
+  for (let i = 0; i < 5; i++) {
+    let a = (TWO_PI / 5) * i - HALF_PI;
+    let px = cos(a) * 14, py = sin(a) * 14;
+    triangle(0, 0, cos(a - 0.4) * 6, sin(a - 0.4) * 6, px, py);
+    triangle(0, 0, cos(a + 0.4) * 6, sin(a + 0.4) * 6, px, py);
+  }
+  fill(255, 255, 255, 120); ellipse(0, 0, 6, 6);
+  pop();
 }
 
 // ── 입력 ──
 function roomMousePressed() {
+  if (roomEnding) { enterRoom(); return; }
+  if (drowned) { enterRoom(); return; }
+  if (lightDarkT > 0) return; // 암전 중엔 입력 무시
+
   let mx = vmouseX(), my = vmouseY();
   for (let o of roomObjects) {
-    if (abs(mx - o.x) <= o.w / 2 && abs(my - o.y) <= o.h / 2) {
-      if (!isObjEnabled(o)) {
-        // 비활성 오브젝트 클릭: 잠김 표시
-        roomLastClicked = o.label + ' (잠김)';
-        roomFlash = 30;
-        return;
-      }
-      // 활성 오브젝트 클릭
-      roomLastClicked = o.label;
-      roomFlash = 30;
-      console.log('[room] 클릭:', o.id);
-      // TODO(다음 단계): 순서 판정 → 맞으면 해당 미니게임 진입, 틀리면 페널티/엔딩
-      //   예) gameState = 'minigame_' + o.id; enterXxx();
+    if (!(abs(mx - o.x) <= o.w / 2 && abs(my - o.y) <= o.h / 2)) continue;
+
+    if (o.id === 'door') { showEnding(solvedCount); return; }
+    if (isBlackout()) return;
+    if (!isObjEnabled(o)) { return; }
+
+    // ── 1단계(첫 화면) 전용 반응 ──
+    if (solvedCount === 0) {
+      handleStage1Click(o);
       return;
     }
+
+    // ── 2단계 이후: 정답 순서 판정 (기존 골격) ──
+    if (o.id === nextCorrectId()) {
+      solvedCount++;
+    } else {
+      roomPopup = '아직 순서가 아니에요! (먼저 ' + labelOf(nextCorrectId()) + ')';
+      roomPopupT = 120;
+    }
+    return;
   }
 }
 
+// 1단계 클릭 반응
+function handleStage1Click(o) {
+  switch (o.id) {
+    case 'sink':
+      // 수도꼭지 미니게임으로 이동 (물 페널티 멈춤). 클리어 시 sinkComplete()가 1단계 완료 처리.
+      waterStarted = false; waterLevel = 0; drowned = false;
+      gameState = 'minigame_sink';
+      enterSinkGame();
+      break;
+    case 'recycle':
+      roomPopup = '아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!';
+      roomPopupT = 180;
+      break;
+    case 'computer':
+      roomPopup = '조금 이따 게임하려고 켜둔 거야.';
+      roomPopupT = 180;
+      break;
+    case 'tv':
+      roomBubble = '9시 뉴스 봐야 해!';
+      roomBubbleT = 180;
+      break;
+    case 'light':
+      // 화면 암전 5초 후 팝업
+      lightDarkT = 300;
+      break;
+  }
+}
+
+function labelOf(id) {
+  let o = roomObjects.find(x => x.id === id);
+  return o ? o.label : id;
+}
+
 function roomKeyPressed() {
-  // (다음 단계) 필요 시 키 입력
+  if (roomEnding) { enterRoom(); return; }
+  if (drowned) { enterRoom(); return; }
+}
+
+// ── 엔딩 ──
+const ENDINGS = [
+  { stage: 0, title: '지구가 멸망했습니다', desc: '아무것도 하지 않은 채 떠난 당신. 불바다가 된 지구.' },
+  { stage: 1, title: '펭귄들은 단결했습니다', desc: '쓰레기가 범람하자, 펭귄들이 들고일어났습니다.' },
+  { stage: 2, title: '땅이 꺼졌습니다 — 싱크홀', desc: '끝없는 채굴 끝에 땅이 무너져 내렸습니다.' },
+  { stage: 3, title: '거목이 쓰러졌습니다', desc: '당신이 목을 축이는 동안, 숲의 거목이 쓰러졌습니다.' },
+  { stage: 4, title: '태양이 삼켜졌습니다 — 사막', desc: '밝고 찬란한 화면이, 끝내 태양을 삼켰습니다.' },
+  { stage: 5, title: '그는 어둠에 빠졌습니다', desc: '당신의 불빛이 북극곰을 영원한 어둠에 빠뜨렸습니다.' },
+  { stage: 6, title: '따스한 햇살이 들어옵니다', desc: '모든 것을 끄고 떠난 당신. 현관문 아래로 햇살이.', happy: true },
+];
+
+function showEnding(stage) { roomEnding = ENDINGS[constrain(stage, 0, 6)]; }
+
+function drawEnding() {
+  push();
+  let happy = roomEnding.happy;
+  background(happy ? color(40, 36, 28) : color(12, 10, 14));
+  rectMode(CENTER); noStroke();
+  fill(happy ? color(255, 224, 130) : color(230, 90, 70));
+  textAlign(CENTER, CENTER); textStyle(BOLD); textSize(30);
+  text(roomEnding.title, GW / 2, GH / 2 - 30);
+  fill(220, 215, 220); textStyle(NORMAL); textSize(14);
+  text(roomEnding.desc, GW / 2, GH / 2 + 14);
+  fill(150, 150, 165); textSize(11);
+  text('(나간 시점: ' + roomEnding.stage + '/6 단계)', GW / 2, GH / 2 + 46);
+  let blink = map(abs(sin(frameCount * 0.05)), 0, 1, 100, 220);
+  fill(200, 200, 210, blink); textSize(14);
+  text('Press any key or click to restart', GW / 2, GH - 40);
+  pop();
 }

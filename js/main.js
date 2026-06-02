@@ -40,7 +40,10 @@ function draw() {
     case 'room':
       updateRoom();
       break;
-    // 앞으로: 'minigame', 'ending' ...
+    case 'minigame_sink':
+      updateSinkGame();
+      break;
+    // 앞으로: 다른 미니게임, 'ending' ...
   }
 
   pop();
@@ -54,6 +57,9 @@ function mousePressed() {
     case 'room':
       roomMousePressed();
       break;
+    case 'minigame_sink':
+      sinkMousePressed();
+      break;
   }
 }
 
@@ -64,6 +70,9 @@ function keyPressed() {
       break;
     case 'room':
       roomKeyPressed();
+      break;
+    case 'minigame_sink':
+      sinkKeyPressed();
       break;
   }
 }
