@@ -1,5 +1,14 @@
-// 나비효과 게임 - 인트로 화면
-// p5.js 스케치 - editor.p5js.org에 붙여넣기
+// 나비효과 게임 - 인트로 씬 (scenes/intro.js)
+// 동작은 원본 인트로와 완전히 동일. 코드만 씬 패턴으로 캡슐화함.
+//
+// 씬 함수 세트:
+//   enterIntro()         : 인트로 진입 시 전용 변수 초기화 (재진입/재시작 대비)
+//   updateIntro()        : 매 프레임 로직 + 드로잉 (원본 draw() 내용물)
+//   introMousePressed()  : 원본 mousePressed() 내용물
+//   introKeyPressed()    : 원본 keyPressed() 내용물
+//
+// p5의 setup/draw/mousePressed/keyPressed는 main.js에만 있고,
+// gameState === 'intro'일 때 위 함수들을 호출합니다.
 
 // ── 상태 ──
 // 'butterfly' : 나비 날갯짓
@@ -8,6 +17,7 @@
 // 'message'   : 메시지 등장
 // 'done'       : 페이드아웃 후 완료
 
+// ── 인트로 전용 전역 변수 ──
 let phase = 'butterfly';
 let timer = 0;
 let particles = [];
@@ -18,7 +28,7 @@ let subAlpha = 0;
 let blinkT = 0;
 let started = false;
 
-// [추가] 하늘 전환 계수 (0 = 맑은 하늘색 아침 → 1 = 잿빛 폭풍 하늘)
+// 하늘 전환 계수 (0 = 맑은 하늘색 아침 → 1 = 잿빛 폭풍 하늘)
 let skyT = 0;
 
 // 나비 날개
@@ -26,8 +36,36 @@ let wingAngle = 0;
 let wingDir = 1;
 let wingFlaps = 0;
 
-// 픽셀 크기
-const PS = 5;
+// 나비 위치/크기
+let butterflyX = 130;
+let butterflyY = 220;
+let butterflyScale = 1.0;
+
+// 토네이도 중심 (화면 정중앙)
+let tornadoCX = 340;
+let tornadoCY = 240;
+
+// ── 인트로 진입(초기화) ──
+// 원본은 변수 선언 초깃값에 의존했는데, 재진입/재시작을 위해
+// 같은 초깃값을 여기서 명시적으로 되돌립니다. (값은 원본과 동일)
+function enterIntro() {
+  phase = 'butterfly';
+  timer = 0;
+  particles = [];
+  tornadoParticles = [];
+  fadeAlpha = 0;      // 원본과 동일 (이 값에선 페이드인이 사실상 즉시 끝남)
+  msgAlpha = 0;
+  subAlpha = 0;
+  blinkT = 0;
+  started = false;
+  skyT = 0;
+  wingAngle = 0;
+  wingDir = 1;
+  wingFlaps = 0;
+  butterflyX = 130;
+  butterflyY = 220;
+  butterflyScale = 1.0;
+}
 
 // 파티클 (바람 흐름)
 class WindParticle {
@@ -88,7 +126,7 @@ class TornadoParticle {
     this.angle += this.speed;
     this.height -= random(0.5, 2.0);       // 위로 올라감
     this.radius += random(-0.3, 0.8);       // 점점 퍼짐
-    this.radius = constrain(this.radius, 5, 380); // [수정] 화면을 덮도록 최대 반경 확대 (였음: 200)
+    this.radius = constrain(this.radius, 5, 380); // 화면을 덮도록 최대 반경 확대
     this.life -= this.decay;
   }
   draw() {
@@ -100,23 +138,17 @@ class TornadoParticle {
     fill(red(this.col), green(this.col), blue(this.col), this.life * 220);
     rect(px, py, this.size, this.size);
   }
-  isDead() { return this.life <= 0 || this.height < -340; } // [수정] 더 멀리까지 살아있게 (였음: -300)
+  isDead() { return this.life <= 0 || this.height < -340; }
 }
 
-function setup() {
-  createCanvas(680, 480);
-  noSmooth(); // 픽셀 느낌
-  rectMode(CENTER);
-  textFont('Courier New');
-}
-
-function draw() {
-  // [수정] 하늘 전환 계수 갱신: 맑은 하늘(butterfly/wind) → 토네이도 동안 점점 잿빛 → 이후 잿빛 유지
+// ── 매 프레임: 로직 + 드로잉 (원본 draw() 내용물) ──
+function updateIntro() {
+  // 하늘 전환 계수 갱신
   if (phase === 'butterfly' || phase === 'wind') skyT = 0;
   else if (phase === 'tornado') skyT = constrain(timer / 160, 0, 1);
   else skyT = 1; // message, done
 
-  // [수정] 배경: 하늘색 → 잿빛 그라데이션 (였음: background(10, 8, 20))
+  // 배경: 하늘색 → 잿빛 그라데이션
   drawSky();
 
   // 별 (맑은 하늘엔 안 보이고, 잿빛 폭풍 하늘에서 옅은 티끌처럼만)
@@ -187,12 +219,8 @@ function draw() {
   }
 }
 
-// [추가] ── 하늘 그라데이션 (skyT: 0 맑은 하늘색 → 1 잿빛 폭풍) ──
+// ── 하늘 그라데이션 (skyT: 0 맑은 하늘색 → 1 잿빛 폭풍) ──
 function drawSky() {
-  // [수정] 마지막(잿빛) 화면을 업로드한 종말 사진 톤에 맞춤.
-  //        위쪽=짙은 청회색 먹구름, 아래쪽(지평선)=불타는 주황 노을.
-  //        '뿌연 느낌'이 아니라 또렷한 색 그라데이션으로 칠함.
-  //        ↓ 사진과 톤을 더 맞추고 싶으면 이 6개 값만 조절하면 됨.
   const TOP_ASH = [33, 42, 49];    // 하늘 위쪽 (짙은 청회색)
   const BOT_ASH = [179, 150, 113]; // 지평선 (주황 노을)
   // 위쪽 색: 맑은 하늘색 → 짙은 청회색
@@ -204,14 +232,14 @@ function drawSky() {
   for (let y = 0; y < 480; y += PS) {
     let t = y / 480;
     fill(lerp(topR, botR, t), lerp(topG, botG, t), lerp(topB, botB, t));
-    rect(0, y, 680, PS);
+    rect(0, y, 680, PS + 2); // [수정] 띠를 2px 겹쳐 확대 시 생기는 가로 빈틈 제거
   }
   rectMode(CENTER);
 }
 
 // ── 별 ──
 function drawStars() {
-  if (skyT <= 0.02) return; // [수정] 맑은 하늘색일 땐 별을 그리지 않음
+  if (skyT <= 0.02) return; // 맑은 하늘색일 땐 별을 그리지 않음
   noStroke();
   randomSeed(42);
   for (let i = 0; i < 60; i++) {
@@ -221,17 +249,13 @@ function drawStars() {
     let sa = random(120, 220);
     // 일부 별 깜빡임
     if (i % 7 === 0) sa = map(sin(blinkT * 0.03 + i), -1, 1, 80, 220);
-    // [수정] 잿빛 하늘에서만 옅은 티끌처럼 보이도록 skyT로 감쇠
+    // 잿빛 하늘에서만 옅은 티끌처럼 보이도록 skyT로 감쇠
     fill(210, 212, 222, sa * skyT * 0.5);
     rect(round(sx / PS) * PS, round(sy / PS) * PS, ss, ss);
   }
 }
 
 // ── 나비 ──
-let butterflyX = 130;
-let butterflyY = 220;
-let butterflyScale = 1.0;
-
 function updateButterfly() {
   wingAngle += wingDir * 0.18;
   if (wingAngle > 0.9) { wingDir = -1; wingFlaps++; }
@@ -253,8 +277,8 @@ function drawButterfly() {
 
   let wOpen = abs(sin(wingAngle)) * 28;
 
-  // [수정] 날개 색: 모나크 주황 / 좌우 날개를 몸통 기준 대칭으로 (왼쪽 날개가 몸통에서 떨어져 보이던 문제 수정)
-  // 왼쪽 날개 (위) - 안쪽 끝을 -8로 고정하고 바깥쪽으로만 펼쳐짐 (오른쪽과 대칭)
+  // 날개 색: 모나크 주황 / 좌우 날개를 몸통 기준 대칭으로
+  // 왼쪽 날개 (위)
   drawPixelWing(-8, -10, wOpen + 8, 18, color(250, 158, 52), color(196, 96, 24));
   // 오른쪽 날개 (위)
   drawPixelWing(8, -10, wOpen + 8, 18, color(250, 158, 52), color(196, 96, 24));
@@ -263,13 +287,13 @@ function drawButterfly() {
   // 오른쪽 날개 (아래)
   drawPixelWing(4, 6, wOpen * 0.7 + 4, 12, color(238, 130, 42), color(176, 80, 20));
 
-  // [수정] 날개 무늬 - 모나크 특유의 흰 점
+  // 날개 무늬 - 모나크 특유의 흰 점
   fill(255, 248, 230, 215);
   noStroke();
   rect(-wOpen - 2, -6, 8, 8);
   rect(wOpen + 2, -6, 8, 8);
 
-  // [수정] 몸통 - 어두운 갈색/검정 (주황 날개와 대비)
+  // 몸통 - 어두운 갈색/검정 (주황 날개와 대비)
   fill(48, 32, 26);
   noStroke();
   rect(0, -8, PS, 24);
@@ -307,7 +331,6 @@ function drawPixelWing(x, y, w, h, c1, c2) {
 function spawnWindFromWing() {
   if (timer % 4 === 0) {
     let speed = random(1.5, 3.0);
-    // [수정] 하늘색 배경에 묻히지 않도록 파랑/회색/흰색 중 랜덤으로 (였음: 단색 하늘색 150,200,255)
     particles.push(new WindParticle(
       butterflyX + random(-15, 15),
       butterflyY + random(-10, 10),
@@ -318,7 +341,7 @@ function spawnWindFromWing() {
   }
 }
 
-// [추가] 바람/토네이도 공용 색: 파랑 ~ 회색 ~ 흰색 (배경 하늘색과 대비)
+// 바람/토네이도 공용 색: 파랑 ~ 회색 ~ 흰색 (배경 하늘색과 대비)
 function windColor() {
   let t = random();
   if (t < 0.4) return color(70, 110, 200, random(150, 220));   // 진한 파랑
@@ -333,7 +356,6 @@ function spawnWindStream() {
     for (let i = 0; i < n; i++) {
       let angle = random(-0.3, 0.3);
       let speed = random(2.5, 5.0);
-      // [수정] 파랑/회색/흰색 중 랜덤 (였음: 하늘색 계열만)
       let col = windColor();
       particles.push(new WindParticle(
         butterflyX + random(-20, 20),
@@ -347,19 +369,15 @@ function spawnWindStream() {
 }
 
 // ── 토네이도 파티클 생성 ──
-// [수정] 토네이도 중심을 화면 정중앙으로 (였음: 480, 350)
-let tornadoCX = 340;
-let tornadoCY = 240;
-
 function spawnTornadoParticles() {
   if (timer % 1 === 0) {
-    // [수정] 후반부에 더 많이 생성해 화면을 덮음 (였음: 2 ~ 12)
+    // 후반부에 더 많이 생성해 화면을 덮음
     let n = floor(map(timer, 0, 160, 3, 20));
     for (let i = 0; i < n; i++) {
-      // [수정] 반경이 화면 가로 끝까지 퍼지도록 (였음: 20 ~ 120)
+      // 반경이 화면 가로 끝까지 퍼지도록
       let radius = random(5, map(timer, 0, 160, 30, 360));
       let angle = random(TWO_PI);
-      // [수정] 세로로도 화면 전체를 덮도록 위/아래 모두 분포 (였음: 0 ~ 220, 위쪽만)
+      // 세로로도 화면 전체를 덮도록 위/아래 모두 분포
       let hRange = map(timer, 0, 160, 60, 280);
       let height = random(-hRange, hRange);
       let speed = random(0.08, 0.18) * (random() > 0.5 ? 1 : -1);
@@ -388,7 +406,7 @@ function spawnTornadoParticles() {
       butterflyX + random(-15, 15),
       butterflyY + random(-10, 10),
       vx, vy,
-      windColor() // [수정] 파랑/회색/흰색 통일 (였음: 180,210,255)
+      windColor()
     ));
   }
 }
@@ -411,13 +429,11 @@ function updateAndDrawTornado() {
 
 // ── 메시지 ──
 function drawMessage() {
-  // [수정] '사소한 행동 하나가 / 미래를 바꿉니다' 메인 멘트 삭제
-  // [수정] '당신의 선택이 지구의 운명을 결정합니다' 서브 멘트도 삭제
   noStroke();
   textAlign(CENTER);
   textStyle(NORMAL);
 
-  // 나비효과 제목 - 화면 높이의 1/3 지점(상단 중앙). [수정] 배경 박스 삭제
+  // 나비효과 제목 - 화면 높이의 1/3 지점(상단 중앙)
   if (timer > 80) {
     let titleAlpha = min(255, (timer - 80) * 5);
     // 타이틀
@@ -442,19 +458,17 @@ function drawSkipHint() {
 }
 
 // ── 입력 ──
-function mousePressed() {
+function introMousePressed() {
   if (phase === 'message' && timer > 80) {
-    // 다음 씬으로 (실제 게임에서는 스테이지1로 전환)
-    phase = 'done';
-    console.log('→ 스테이지 1로 전환');
-    // 여기에 게임 씬 전환 코드 추가
+    // 다음 씬(ROOM)으로 전환
+    gameState = 'room';
+    enterRoom();
   }
 }
 
-function keyPressed() {
+function introKeyPressed() {
   if (phase === 'message' && timer > 80) {
-    phase = 'done';
-    console.log('→ 스테이지 1로 전환');
-    // 여기에 게임 씬 전환 코드 추가
+    gameState = 'room';
+    enterRoom();
   }
 }
