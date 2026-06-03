@@ -67,8 +67,10 @@ function nextCorrectId() {
 function isObjEnabled(o) {
   if (o.id === 'door') return true;
   let idx = ROOM_ORDER.indexOf(o.id);
-  if (idx < solvedCount) return false;
-  if (solvedCount >= ROOM_ORDER.length) return false;
+  if (idx < solvedCount) return false;          // 이미 처리됨
+  if (solvedCount >= ROOM_ORDER.length) return false; // 암전
+  // 텀블러: 자기 차례(=3단계)가 오기 전엔 순수 장식. 호버/클릭/페널티 모두 없음.
+  if (o.id === 'tumbler' && solvedCount !== ROOM_ORDER.indexOf('tumbler')) return false;
   return true;
 }
 
@@ -260,8 +262,9 @@ function drawRoomHud() {
   textStyle(NORMAL);
 
   // 중단부 팝업
-  if (roomPopupT > 0) {
-    let a = min(255, roomPopupT * 4);
+if (roomPopupT > 0) {
+  // 마지막 60프레임(1초) 동안만 서서히 옅어짐. 그 전엔 또렷하게 유지.
+  let a = roomPopupT > 60 ? 255 : map(roomPopupT, 0, 60, 0, 255);
     rectMode(CENTER); noStroke();
     fill(0, 0, 0, a * 0.7);
     let w = textWidth ? 0 : 0; // placeholder
@@ -272,24 +275,6 @@ function drawRoomHud() {
     fill(255, 240, 180, a);
     text(roomPopup, GW / 2, GH / 2);
   }
-  pop();
-}
-
-// TV 위 말풍선
-function drawBubble() {
-  let tv = roomObjects.find(o => o.id === 'tv');
-  if (!tv) return;
-  let a = min(255, roomBubbleT * 5);
-  let bx = tv.x, by = tv.y - tv.h / 2 - 26;
-  push(); rectMode(CENTER); noStroke();
-  textSize(14); textAlign(CENTER, CENTER);
-  let tw = max(120, textWidth(roomBubble) + 28);
-  fill(255, 255, 255, a);
-  rect(bx, by, tw, 34, 10);
-  // 꼬리
-  triangle(bx - 8, by + 16, bx + 8, by + 16, bx, by + 28);
-  fill(30, 30, 40, a);
-  text(roomBubble, bx, by);
   pop();
 }
 
@@ -413,16 +398,16 @@ function handleStage1Click(o) {
       enterSinkGame();
       break;
     case 'recycle':
-      roomPopup = '아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!';
-      roomPopupT = 180;
+      roomPopup = "'아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!'";
+      roomPopupT = 120;
       break;
     case 'computer':
-      roomPopup = '조금 이따 게임하려고 켜둔 거야.';
-      roomPopupT = 180;
+      roomPopup = "'조금 이따 게임하려고 켜둔 거야.'";
+      roomPopupT = 120;
       break;
     case 'tv':
-      roomBubble = '9시 뉴스 봐야 해!';
-      roomBubbleT = 180;
+      roomPopup = "'9시 뉴스 봐야 해!'";
+      roomPopupT = 120;
       break;
     case 'light':
       // 화면 암전 5초 후 팝업

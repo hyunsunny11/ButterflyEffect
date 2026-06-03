@@ -3,6 +3,15 @@
 // 이 네 함수는 프로젝트 전체에서 딱 하나씩만 존재할 수 있으므로,
 // 실제 로직은 각 씬 파일에 두고 여기서는 gameState를 보고 분배(교통정리)만 합니다.
 
+// ─────────────────────────────────────────────
+// [개발용 스위치] 인트로 스킵
+//   DEV_SKIP_INTRO = true  → 인트로를 건너뛰고 바로 방에서 시작
+//   DEV_START_STAGE        → 방에서 시작할 단계(solvedCount). 0=처음, 3=텀블러 차례 등
+//   ⚠ 배포(제출) 전에는 반드시 DEV_SKIP_INTRO = false 로 되돌리세요!
+const DEV_SKIP_INTRO = true;
+const DEV_START_STAGE = 0;
+// ─────────────────────────────────────────────
+
 function setup() {
   // 캔버스를 창 전체 크기로 (풀스크린). 게임은 GW×GH 가상 좌표 위에 그리고
   // draw()에서 통째로 확대/중앙정렬합니다.
@@ -14,7 +23,14 @@ function setup() {
   updateView();        // 배율/오프셋 계산
 
   // 첫 씬 진입
-  enterIntro();
+  if (DEV_SKIP_INTRO) {
+    // 인트로 건너뛰고 방에서 시작 (개발용)
+    gameState = 'room';
+    enterRoom();
+    solvedCount = DEV_START_STAGE; // 원하는 단계부터 테스트
+  } else {
+    enterIntro();
+  }
 }
 
 // 창 크기가 바뀌면 캔버스도 따라 키우고 배율 재계산
