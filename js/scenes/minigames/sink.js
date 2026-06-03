@@ -234,7 +234,7 @@ function sink_drawFail() {
   if (sink_textAlpha < 0 || sink_textAlpha > 255) sink_fadeAmount *= -1;
   sink_textAlpha = constrain(sink_textAlpha, 0, 255);
   fill(255, sink_textAlpha); textSize(ssize(20));
-  text('PRESS ANY KEY TO RETRY', sx(SINK_SRC/2), sy(SINK_SRC/2) + ssize(80));
+  text('PRESS ANY KEY OR CLICK TO RETRY', sx(SINK_SRC/2), sy(SINK_SRC/2) + ssize(80));
   pop();
 }
 

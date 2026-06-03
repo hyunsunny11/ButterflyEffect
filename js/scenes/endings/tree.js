@@ -130,8 +130,9 @@ function tr_restart() {
   tr_isFallen        = false;
   tr_sawdustParticles = [];
   tr_textAlpha       = 0;
+  solvedCount = 3;
   gameState = 'room';
-  enterRoom();
+  enterRoom(3);
 }
 
 // ─────────────── 버퍼 사전 렌더링 ───────────────

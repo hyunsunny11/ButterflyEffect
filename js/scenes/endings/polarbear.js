@@ -122,8 +122,9 @@ function pb_restart() {
   pb_bubbleParticles = [];
   pb_splashParticles = [];
   pb_textAlpha = 0;
+  solvedCount = 5;
   gameState = 'room';
-  enterRoom();
+  enterRoom(5);
 }
 
 // ─────────────── 달 버퍼 생성 (1회) ───────────────
@@ -386,7 +387,7 @@ function pb_drawPixelText(g) {
   pb_textAlpha = constrain(pb_textAlpha, 0, 255);
   g.noStroke(); g.textSize(18); g.textAlign(CENTER, CENTER); g.textStyle(BOLD);
   g.fill(10, 40, 90, pb_textAlpha * 0.6);
-  g.text('PRESS ANY KEY OR CLICK TO CONTINUE', PB_W / 2 + 2, PB_H - 72 + 2);
+  g.text('PRESS ANY KEY TO CONTINUE', PB_W / 2 + 2, PB_H - 72 + 2);
   g.fill(180, 220, 255, pb_textAlpha);
-  g.text('PRESS ANY KEY OR CLICK TO CONTINUE', PB_W / 2, PB_H - 72);
+  g.text('PRESS ANY KEY TO CONTINUE', PB_W / 2, PB_H - 72);
 }

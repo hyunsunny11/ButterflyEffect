@@ -100,8 +100,6 @@ function rc_handleCatch(item) {
 // ── 그리기 (원작 좌표를 rcx/rcy/rcs로 감싸 스케일) ──
 function rc_drawItems() {
   for (let item of rc_items) {
-    fill(255); textAlign(CENTER, BASELINE); textSize(rcs(12));
-    text(item.type, rcx(item.x + 10), rcy(item.y - 10));
     switch (item.type) {
       case '종이':     rc_drawPaper(item.x, item.y); break;
       case '캔':       rc_drawCokeCan(item.x, item.y); break;
@@ -151,6 +149,25 @@ function rc_drawUI() {
   textSize(rcs(16));
   text('← → 이동', rcx(20), rcy(70));
   text('+5 성공 / -5 폭발', rcx(20), rcy(95));
+
+  // 오브젝트 범례
+  const legendY = 125;
+  const iconX = 20;
+  const labelOffX = 25;  // 아이콘(20px) + 여백
+  const gap = 34;        // 항목 간격
+  textSize(rcs(10)); textStyle(NORMAL);
+
+  const types = [
+    { label: '플라스틱', draw: rc_drawBottle },
+    { label: '종이',     draw: rc_drawPaper  },
+    { label: '캔',       draw: rc_drawCokeCan},
+    { label: '음식물',   draw: rc_drawFood   },
+  ];
+  for (let i = 0; i < types.length; i++) {
+    const y = legendY + i * gap;
+    types[i].draw(iconX, y);
+    fill(255); text(types[i].label, rcx(iconX + labelOffX), rcy(y + 8));
+  }
   pop();
 }
 
@@ -188,7 +205,7 @@ function rc_drawExplosionScreen() {
   fill(255); textSize(rcs(20)); text('분리수거 실패', rcx(RC_SRC/2), rcy(RC_SRC/2));
   let alpha = 120 + sin(frameCount * 0.037) * 135;
   fill(255, alpha); textSize(rcs(20));
-  text('PRESS ANY KEY TO RETRY', rcx(RC_SRC/2), rcy(RC_SRC/2 + 80));
+  text('PRESS ANY KEY OR CLICK TO RETRY', rcx(RC_SRC/2), rcy(RC_SRC/2 + 80));
   pop();
 }
 

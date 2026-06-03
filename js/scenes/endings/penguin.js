@@ -236,4 +236,4 @@ function pg_drawPixelText(g) {
 // ── 입력: 키/클릭 → 방 처음부터 리스타트 ──
 function penguinEndingKeyPressed() { pg_restart(); }
 function penguinEndingMousePressed() { pg_restart(); }
-function pg_restart() { gameState = 'room'; enterRoom(); }
+function pg_restart() { gameState = 'room'; enterRoom(1); }

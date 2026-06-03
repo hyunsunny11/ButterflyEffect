@@ -399,7 +399,7 @@ function tv_drawFail() {
   text('정렬 ' + solved + ' / 4', GW / 2, GH / 2 + 30);
   if (frameCount % 60 < 38) {
     fill(255); textSize(20);
-    text('PRESS ANY KEY TO RETRY', GW / 2, GH / 2 + 86);
+    text('PRESS ANY KEY OR CLICK TO RETRY', GW / 2, GH / 2 + 86);
   }
   pop();
 }

@@ -412,7 +412,7 @@ function drawFail() {
   // PRESS ANY KEY TO RETRY (점멸)
   if (frameCount % 60 < 38) {
     fill(255); textSize(20);
-    text('PRESS ANY KEY TO RETRY', GW / 2, GH / 2 + 86);
+    text('PRESS ANY KEY OR CLICK TO RETRY', GW / 2, GH / 2 + 86);
   }
   pop();
 }

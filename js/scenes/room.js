@@ -76,7 +76,7 @@ function isObjEnabled(o) {
 
 function isBlackout() { return solvedCount >= ROOM_ORDER.length; }
 
-function enterRoom() {
+function enterRoom(startStage) {
   if (!roomBgs[0]) {
     roomBgs[0] = loadImage('assets/room_bg.png');
     roomBgs[1] = loadImage('assets/room_bg1.png');
@@ -91,7 +91,7 @@ function enterRoom() {
   roomPopup = ''; roomPopupT = 0;
   roomBubble = ''; roomBubbleT = 0;
   lightDarkT = 0;
-  solvedCount = 0;
+  solvedCount = (startStage !== undefined) ? startStage : 0;
   // 물 페널티 초기화
   roomEnterFrame = frameCount;
   waterStarted = false;
@@ -399,6 +399,11 @@ function roomMousePressed() {
       // 해당 오브젝트의 미니게임으로 진입 (있으면). 없으면 임시로 단계만 올림.
       launchMinigameFor(o.id);
     } else {
+      // 조명은 순서와 무관하게 클릭하면 항상 암전 효과
+      if (o.id === 'light') {
+        lightDarkT = 300;
+        return;
+      }
       roomPopup = '아직 순서가 아니에요! (먼저 ' + labelOf(nextCorrectId()) + ')';
       roomPopupT = 120;
     }
@@ -440,16 +445,16 @@ function handleStage1Click(o) {
       enterSinkGame();
       break;
     case 'recycle':
-      roomPopup = "'아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!'";
-      roomPopupT = 120;
+      roomPopup = '아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!';
+      roomPopupT = 180;
       break;
     case 'computer':
-      roomPopup = "'조금 이따 게임하려고 켜둔 거야.'";
-      roomPopupT = 120;
+      roomPopup = '조금 이따 게임하려고 켜둔 거야.';
+      roomPopupT = 180;
       break;
     case 'tv':
-      roomBubble = "'9시 뉴스 봐야 해!'";
-      roomBubbleT = 120;
+      roomBubble = '9시 뉴스 봐야 해!';
+      roomBubbleT = 180;
       break;
     case 'light':
       // 화면 암전 5초 후 팝업
@@ -540,6 +545,6 @@ function drawEnding() {
   text('(나간 시점: ' + roomEnding.stage + '/6 단계)', GW / 2, GH / 2 + 46);
   let blink = map(abs(sin(frameCount * 0.05)), 0, 1, 100, 220);
   fill(200, 200, 210, blink); textSize(14);
-  text('PRESS ANY KEY OR CLICK TO RESTART', GW / 2, GH - 40);
+  text('Press any key or click to restart', GW / 2, GH - 40);
   pop();
 }

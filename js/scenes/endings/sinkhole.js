@@ -98,8 +98,9 @@ function sinkholeEndingMousePressed()  { sg_restart(); }
 
 function sg_restart() {
   sg_bg = null;           // 다음 진입 시 배경 재생성
+  solvedCount = 2;
   gameState = 'room';
-  enterRoom();            // solvedCount=0으로 방 처음부터
+  enterRoom(2);
 }
 
 // ─────────────── 정적 배경 생성 (버퍼에 1회만) ───────────────
@@ -494,7 +495,7 @@ function sg_drawPixelText() {
   sg_textAlpha = constrain(sg_textAlpha, 0, 255);
   noStroke(); textSize(18); textAlign(CENTER, CENTER); textStyle(BOLD);
   fill(8, 8, 15, sg_textAlpha * 0.6);
-  text('PRESS ANY KEY TO CONTINUE', SG_W/2+2, SG_H-70);
+  text('PRESS ANY KEY OR CLICK TO CONTINUE', SG_W/2+2, SG_H-70);
   fill(185, 208, 232, sg_textAlpha);
-  text('PRESS ANY KEY TO CONTINUE', SG_W/2, SG_H-72);
+  text('PRESS ANY KEY OR CLICK TO CONTINUE', SG_W/2, SG_H-72);
 }

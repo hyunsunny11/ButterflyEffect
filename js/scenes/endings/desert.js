@@ -106,8 +106,9 @@ function ds_restart() {
   ds_sandCover     = 0;
   ds_sandParticles = [];
   ds_textAlpha     = 0;
+  solvedCount = 4;
   gameState = 'room';
-  enterRoom();
+  enterRoom(4);
 }
 
 // ─────────────── 석탑 데이터 ───────────────
