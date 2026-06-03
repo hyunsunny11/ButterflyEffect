@@ -59,6 +59,36 @@ function draw() {
     case 'minigame_sink':
       updateSinkGame();
       break;
+    case 'minigame_recycle':
+      updateRecycleGame();
+      break;
+    case 'minigame_computer':
+      updateComputer();
+      break;
+    case 'minigame_tv':
+      updateTV();
+      break;
+    case 'ending_earth':
+      updateEarthEnding();
+      break;
+    case 'ending_penguin':
+      updatePenguinEnding();
+      break;
+    case 'ending_sinkhole':
+      updateSinkholeEnding();
+      break;
+    case 'ending_tree':
+      updateTreeEnding();
+      break;
+    case 'ending_desert':
+      updateDesertEnding();
+      break;
+    case 'ending_polarbear':
+      updatePolarbearEnding();
+      break;
+    case 'ending_clear':
+      updateClearEnding();
+      break;
     // 앞으로: 다른 미니게임, 'ending' ...
   }
 
@@ -76,6 +106,36 @@ function mousePressed() {
     case 'minigame_sink':
       sinkMousePressed();
       break;
+    case 'minigame_recycle':
+      recycleMousePressed();
+      break;
+    case 'minigame_computer':
+      computerMousePressed();
+      break;
+    case 'minigame_tv':
+      tvMousePressed();
+      break;
+    case 'ending_earth':
+      earthEndingMousePressed();
+      break;
+    case 'ending_penguin':
+      penguinEndingMousePressed();
+      break;
+    case 'ending_sinkhole':
+      sinkholeEndingMousePressed();
+      break;
+    case 'ending_tree':
+      treeEndingMousePressed();
+      break;
+    case 'ending_desert':
+      desertEndingMousePressed();
+      break;
+    case 'ending_polarbear':
+      polarbearEndingMousePressed();
+      break;
+    case 'ending_clear':
+      clearEndingMousePressed();
+      break;
   }
 }
 
@@ -90,5 +150,44 @@ function keyPressed() {
     case 'minigame_sink':
       sinkKeyPressed();
       break;
+    case 'minigame_recycle':
+      recycleKeyPressed();
+      break;
+    case 'minigame_computer':
+      computerKeyPressed();
+      break;
+    case 'minigame_tv':
+      tvKeyPressed();
+      break;
+    case 'ending_earth':
+      earthEndingKeyPressed();
+      break;
+    case 'ending_penguin':
+      penguinEndingKeyPressed();
+      break;
+    case 'ending_sinkhole':
+      sinkholeEndingKeyPressed();
+      break;
+    case 'ending_tree':
+      treeEndingKeyPressed();
+      break;
+    case 'ending_desert':
+      desertEndingKeyPressed();
+      break;
+    case 'ending_polarbear':
+      polarbearEndingKeyPressed();
+      break;
+    case 'ending_clear':
+      clearEndingKeyPressed();
+      break;
   }
+}
+
+// ★ TV 미니게임은 드래그가 필요하므로 p5 예약 함수 추가
+function mouseDragged() {
+  if (gameState === 'minigame_tv') tvMouseDragged();
+}
+
+function mouseReleased() {
+  if (gameState === 'minigame_tv') tvMouseReleased();
 }

@@ -36,7 +36,7 @@
  *  ※ p5 전역 모드와 충돌하는 setup/draw/createCanvas 등은 이 씬에 두지 않음.
  * ===================================================================== */
 
-const GW = 680, GH = 480;
+// (GW, GH는 shared/pixel.js에서 전역 선언됨 — 재선언 안 함)
 
 // 전체 글씨체: 수도 잠그기 게임과 동일하게 monospace + 굵게(BOLD).
 const CM_FONT = "monospace";
@@ -132,6 +132,7 @@ function makePopup() {
 /* ── 매 프레임 ── */
 function updateComputer() {
   push();
+  rectMode(CORNER);     // ★ main.js의 rectMode(CENTER)를 이 씬 안에서만 CORNER로 재설정
   textFont(CM_FONT);    // 수도 잠그기 게임과 동일: monospace
   textStyle(BOLD);      // 전체 굵게 — push/pop 안이라 다른 씬에 새지 않음
 
@@ -184,11 +185,11 @@ function releaseFromQueue() {
 /* ── 입력 ── */
 function computerMousePressed() {
   if (cm_phase === 'win') {
-    // 연출이 끝난 뒤 클릭하면 클리어 처리(데모에선 재시작)
+    // 연출(900ms) 후 클릭하면 클리어
     if (millis() - cm_winAt > 900) cm_onClear();
     return;
   }
-  if (cm_phase === 'fail') return;  // 실패 화면에선 아무 '키'로만 재시작
+  if (cm_phase === 'fail') return;  // 실패 화면에선 키로만 재시작
 
   const mx = vmouseX(), my = vmouseY();
 
@@ -231,13 +232,19 @@ function closePopup(i) {
  *     gameState = 'room';         // 방으로 복귀(배경 room_bg3로 전환)
  *  데모에선 미니게임을 재시작한다. */
 function cm_onClear() {
-  enterComputer();   // ← 실제 게임에선 위 두 줄로 교체
+  // 컴퓨터까지 완료 → 3단계로 올리고 방으로 복귀 (배경 room_bg3로 전환)
+  solvedCount = 3;
+  gameState = 'room';
+  roomReenterAfterMinigame();
 }
 
 /* ── 키 입력: 실패 화면에서 아무 키나 누르면 재시도 ──
  *  프레임워크 연결 시 main.js keyPressed 분배기에:
  *     case 'computer': computerKeyPressed(); break;  */
 function computerKeyPressed() {
+  if (cm_phase === 'win' && millis() - cm_winAt > 900) {
+    cm_onClear();   // 연출 후 아무 키 → 클리어
+  }
   if (cm_phase === 'fail' && millis() - cm_failAt > 300) {
     cm_onFail();
   }
@@ -296,30 +303,30 @@ function drawPopup(p, isTop) {
   // 타이틀바 하이라이트(살짝 밝은 줄)
   fill(255, 40); rect(3, 3, p.w - 6, 2);
   // 타이틀 아이콘 + 텍스트
-  textAlign(LEFT, CENTER); textSize(12);
+  textAlign(LEFT, CENTER); textSize(12); textStyle(NORMAL); // ★ NORMAL로 초기화
   text(p.t.icon, 8, 13);
   fill(255); textStyle(BOLD);
   text(p.t.title, 26, 13);
-  textStyle(BOLD);
+  // textStyle(BOLD) 중복 제거
 
   // 타이틀바 우측 버튼들(_ □ ✕) — ✕만 기능
   drawTitleButton(p.w - 60, 5, '＿', false);
   drawTitleButton(p.w - 39, 5, '☐', false);
-  drawTitleButton(cb.x - p.x, cb.y - p.y, '✕', p.hoverX);
+  drawTitleButton(p.w - 21, 5, '✕', p.hoverX); // ★ 로컬 좌표로 직접 지정
 
   // 본문 패널(살짝 함몰)
   bevelRect(8, 28, p.w - 16, p.h - 64, '#ffffff', false);
   // 큰 아이콘
-  textAlign(CENTER, CENTER); textSize(30);
+  textAlign(CENTER, CENTER); textSize(30); textStyle(NORMAL);
   text(p.t.icon, 34, 28 + (p.h - 64) / 2);
   // 본문 텍스트
-  fill('#101010'); textAlign(LEFT, TOP); textSize(12);
+  fill('#101010'); textAlign(LEFT, TOP); textSize(12); textStyle(NORMAL);
   text(p.t.body, 58, 38, p.w - 70, p.h - 70);
 
   // 하단 가짜 버튼
   const bw = 64, bh = 20, bx = p.w - bw - 12, by = p.h - bh - 10;
   bevelRect(bx, by, bw, bh, '#d4d0c8', true);
-  fill('#101010'); textAlign(CENTER, CENTER); textSize(12);
+  fill('#101010'); textAlign(CENTER, CENTER); textSize(12); textStyle(NORMAL);
   text(p.t.btn, bx + bw / 2, by + bh / 2 - 1);
 
   pop();
@@ -331,7 +338,7 @@ function drawTitleButton(x, y, glyph, hot) {
   fill(hot ? 255 : '#101010');
   textAlign(CENTER, CENTER); textSize(11); textStyle(BOLD);
   text(glyph, x + 9, y + 7);
-  textStyle(BOLD);
+  // ★ 중복 textStyle(BOLD) 제거
 }
 
 /* 닫기 버튼의 화면상 절대 좌표(히트 테스트용) */
@@ -378,6 +385,11 @@ function drawWin() {
   fill(0, min(180, t * 0.4)); rect(0, 0, GW, GH);
   fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(42);
   text('창 닫기 성공!', GW / 2, GH / 2);
+  if (t > 900) {
+    const alpha = 120 + sin(frameCount * 0.08) * 100;
+    fill(200, 230, 255, alpha); textSize(18);
+    text('PRESS ANY KEY OR CLICK TO CONTINUE', GW / 2, GH / 2 + 70);
+  }
   pop();
 }
 
@@ -413,37 +425,9 @@ function bevelRect(x, y, w, h, bg, raised) {
   strokeWeight(1);
   stroke(light); line(x, y, x + w, y); line(x, y, x, y + h);            // 위/왼
   stroke(dark);  line(x, y + h, x + w, y + h); line(x + w, y, x + w, y + h); // 아래/오른
-  noStroke();
+  noStroke(); // ★ stroke 상태 초기화 (이후 fill만 쓰는 도형에 선이 남는 현상 방지)
 }
 function inRect(px, py, x, y, w, h) {
   return px >= x && px <= x + w && py >= y && py <= y + h;
 }
 function easeOut(t) { return 1 - (1 - t) * (1 - t); }
-
-/* =====================================================================
- *  ▼▼▼ [STANDALONE 데모 하네스] — 프레임워크에 넣을 땐 이 블록 삭제 ▼▼▼
- *  (실제 게임에선 main.js의 setup/draw/mousePressed + vmouse 헬퍼를 사용)
- * ===================================================================== */
-function setup() {
-  const c = createCanvas(GW, GH);
-  const holder = document.getElementById('wrap');
-  if (holder) c.parent(holder);   // 단독 실행용 래퍼가 있으면 그 안에, 없으면 body에
-  textFont(CM_FONT);
-  textStyle(BOLD);
-  pixelDensity(1);
-  enterComputer();
-}
-function draw() {
-  if (!cm_started) enterComputer();
-  updateComputer();
-}
-function mousePressed() {
-  computerMousePressed();
-}
-function keyPressed() {
-  computerKeyPressed();
-}
-// 데모용 가상 좌표 헬퍼: 캔버스가 정확히 GW×GH라 마우스 좌표가 곧 가상 좌표
-function vmouseX() { return mouseX; }
-function vmouseY() { return mouseY; }
-/* ▲▲▲ [STANDALONE 데모 하네스] 끝 ▲▲▲ */

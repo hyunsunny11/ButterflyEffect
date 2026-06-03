@@ -262,9 +262,8 @@ function drawRoomHud() {
   textStyle(NORMAL);
 
   // 중단부 팝업
-if (roomPopupT > 0) {
-  // 마지막 60프레임(1초) 동안만 서서히 옅어짐. 그 전엔 또렷하게 유지.
-  let a = roomPopupT > 60 ? 255 : map(roomPopupT, 0, 60, 0, 255);
+  if (roomPopupT > 0) {
+    let a = min(255, roomPopupT * 4);
     rectMode(CENTER); noStroke();
     fill(0, 0, 0, a * 0.7);
     let w = textWidth ? 0 : 0; // placeholder
@@ -275,6 +274,24 @@ if (roomPopupT > 0) {
     fill(255, 240, 180, a);
     text(roomPopup, GW / 2, GH / 2);
   }
+  pop();
+}
+
+// TV 위 말풍선
+function drawBubble() {
+  let tv = roomObjects.find(o => o.id === 'tv');
+  if (!tv) return;
+  let a = min(255, roomBubbleT * 5);
+  let bx = tv.x, by = tv.y - tv.h / 2 - 26;
+  push(); rectMode(CENTER); noStroke();
+  textSize(14); textAlign(CENTER, CENTER);
+  let tw = max(120, textWidth(roomBubble) + 28);
+  fill(255, 255, 255, a);
+  rect(bx, by, tw, 34, 10);
+  // 꼬리
+  triangle(bx - 8, by + 16, bx + 8, by + 16, bx, by + 28);
+  fill(30, 30, 40, a);
+  text(roomBubble, bx, by);
   pop();
 }
 
@@ -377,14 +394,39 @@ function roomMousePressed() {
       return;
     }
 
-    // ── 2단계 이후: 정답 순서 판정 (기존 골격) ──
+    // ── 2단계 이후: 정답 순서 판정 ──
     if (o.id === nextCorrectId()) {
-      solvedCount++;
+      // 해당 오브젝트의 미니게임으로 진입 (있으면). 없으면 임시로 단계만 올림.
+      launchMinigameFor(o.id);
     } else {
       roomPopup = '아직 순서가 아니에요! (먼저 ' + labelOf(nextCorrectId()) + ')';
       roomPopupT = 120;
     }
     return;
+  }
+}
+
+// 오브젝트 → 미니게임 진입. 아직 미니게임이 없는 건 임시로 단계만 올림.
+function launchMinigameFor(id) {
+  switch (id) {
+    case 'recycle':
+      gameState = 'minigame_recycle';
+      enterRecycleGame();
+      break;
+    case 'computer':
+      gameState = 'minigame_computer';
+      enterComputer();
+      break;
+    case 'tv':
+      gameState = 'minigame_tv';
+      enterTV();
+      break;
+    // (다음) case 'computer': gameState='minigame_computer'; enterComputerGame(); break;
+    //        case 'tumbler': ... / case 'light': ...
+    default:
+      // 미니게임 미연결 오브젝트: 임시 통과 (단계만 +1)
+      solvedCount++;
+      break;
   }
 }
 
@@ -406,8 +448,8 @@ function handleStage1Click(o) {
       roomPopupT = 120;
       break;
     case 'tv':
-      roomPopup = "'9시 뉴스 봐야 해!'";
-      roomPopupT = 120;
+      roomBubble = "'9시 뉴스 봐야 해!'";
+      roomBubbleT = 120;
       break;
     case 'light':
       // 화면 암전 5초 후 팝업
@@ -437,7 +479,52 @@ const ENDINGS = [
   { stage: 6, title: '따스한 햇살이 들어옵니다', desc: '모든 것을 끄고 떠난 당신. 현관문 아래로 햇살이.', happy: true },
 ];
 
-function showEnding(stage) { roomEnding = ENDINGS[constrain(stage, 0, 6)]; }
+function showEnding(stage) {
+  // 0단계 → 불타는 지구 엔딩 씬
+  if (stage === 0) {
+    gameState = 'ending_earth';
+    enterEarthEnding();
+    return;
+  }
+  // 1단계 → 펭귄 단결 엔딩 씬
+  if (stage === 1) {
+    gameState = 'ending_penguin';
+    enterPenguinEnding();
+    return;
+  }
+  // 2단계 → 싱크홀 엔딩 씬 (싱크대+분리수거 후 나감)
+  if (stage === 2) {
+    gameState = 'ending_sinkhole';
+    enterSinkholeEnding();
+    return;
+  }
+  // 3단계 → 거목 엔딩 씬 (텀블러 미완료 후 나감)
+  if (stage === 3) {
+    gameState = 'ending_tree';
+    enterTreeEnding();
+    return;
+  }
+  // 4단계 → 사막 엔딩 씬 (TV 미완료 후 나감)
+  if (stage === 4) {
+    gameState = 'ending_desert';
+    enterDesertEnding();
+    return;
+  }
+  // 5단계 → 북극곰 침수 엔딩 씬 (조명 미완료 후 나감)
+  if (stage === 5) {
+    gameState = 'ending_polarbear';
+    enterPolarbearEnding();
+    return;
+  }
+  // 6단계 → 최종 클리어 엔딩 씬 (모든 단계 완료)
+  if (stage === 6) {
+    gameState = 'ending_clear';
+    enterClearEnding();
+    return;
+  }
+  // 그 외 단계 → 기존 텍스트 엔딩
+  roomEnding = ENDINGS[constrain(stage, 0, 6)];
+}
 
 function drawEnding() {
   push();
@@ -453,6 +540,6 @@ function drawEnding() {
   text('(나간 시점: ' + roomEnding.stage + '/6 단계)', GW / 2, GH / 2 + 46);
   let blink = map(abs(sin(frameCount * 0.05)), 0, 1, 100, 220);
   fill(200, 200, 210, blink); textSize(14);
-  text('Press any key or click to restart', GW / 2, GH - 40);
+  text('PRESS ANY KEY OR CLICK TO RESTART', GW / 2, GH - 40);
   pop();
 }
