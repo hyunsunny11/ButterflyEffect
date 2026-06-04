@@ -83,11 +83,20 @@ function rc_updateItems() {
     if (hit) { rc_handleCatch(t); rc_items.splice(i, 1); continue; }
     if (t.y > RC_SRC + 50) rc_items.splice(i, 1);
   }
-  if (rc_score >= 5) rc_state = 'clear';
+  if (rc_score >= 5 && rc_state === 'play') {
+  rc_state = 'clear';
+
+  if (minigameSuccessSound) {
+    minigameSuccessSound.play();
+  }
+}
   if (rc_score <= -5 && rc_state === 'play') rc_explodeBasket();
 }
 
 function rc_handleCatch(item) {
+   if (wasteSound) {
+    wasteSound.play();
+  }
   if (item.type === '음식물') { rc_score -= 2; return; }
   if (item.type === rc_basket.type) {
     rc_score += 1;
@@ -172,6 +181,9 @@ function rc_drawUI() {
 }
 
 function rc_explodeBasket() {
+  if (minigameFailSound) {
+    minigameFailSound.play();
+  }
   rc_state = 'explode';
   for (let i = 0; i < 180; i++) {
     rc_particles.push({ x: rc_basket.x, y: rc_basket.y, vx: random(-8,8), vy: random(-8,8), life: random(30,80) });
