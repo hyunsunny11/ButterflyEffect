@@ -8,7 +8,7 @@
 //   DEV_SKIP_INTRO = true  → 인트로를 건너뛰고 바로 방에서 시작
 //   DEV_START_STAGE        → 방에서 시작할 단계(solvedCount). 0=처음, 3=텀블러 차례 등
 //   ⚠ 배포(제출) 전에는 반드시 DEV_SKIP_INTRO = false 로 되돌리세요!
-const DEV_SKIP_INTRO = true;
+const DEV_SKIP_INTRO = false;
 const DEV_START_STAGE = 0;
 // ─────────────────────────────────────────────
 
