@@ -261,6 +261,27 @@ function drawRoomHud() {
   text('해결: ' + solvedCount + ' / 6', 14, 12);
   textStyle(NORMAL);
 
+  // TV 위 ~ 전등 사이 단계별 메시지 (solvedCount 0~5, 6은 암전이라 표시 안 함)
+  const STAGE_MSGS = [
+    '문을 열고 나가세요!',
+    '이제 문을 열고 나가세요!',
+    '이젠 진짜에요. 문을 열고 나가세요!',
+    '문은 화면 오른쪽에 있습니다. 알고 계시죠?',
+    '집돌이, 집순이신가요? 좀 나갑시다…',
+    '이젠 저도 모르겠습니다. 알아서 하세요.',
+  ];
+  if (!isBlackout() && solvedCount < STAGE_MSGS.length) {
+    const msg = STAGE_MSGS[solvedCount];
+    // TV 오른쪽 끝(373)과 전등(562) 사이 중앙, TV 상단(175) 근처
+    const mx = 330, my = 80;
+    rectMode(CENTER); textSize(12); textAlign(CENTER, CENTER);
+    const tw = max(140, textWidth(msg) + 24);
+    fill(20, 20, 26, 180);
+    rect(mx, my, tw, 28, 6);
+    fill(255, 240, 180);
+    text(msg, mx, my);
+  }
+
   // 중단부 팝업
   if (roomPopupT > 0) {
     let a = min(255, roomPopupT * 4);
