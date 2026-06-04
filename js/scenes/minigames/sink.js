@@ -52,6 +52,9 @@ function enterSinkGame() {
     sink_pipeBuffer.pixelDensity(1);
     sink_renderStaticPipes();
   }
+  if (sink_waterSound && !sink_waterSound.isPlaying()) {
+  sink_waterSound.loop();
+}
 }
 
 function updateSinkGame() {
@@ -181,14 +184,36 @@ function sink_drawDynamicSink() {
 function sink_tryLock() {
   let a = ((sink_angle % 360) + 360) % 360;
   let success = (a>=0&&a<=10)||(a>=170&&a<=190)||(a>=350&&a<=360);
-  if (success) { sink_state = 'clear'; return; }
+  if (success) {
+  sink_state = 'clear';
+
+  if (sink_waterSound && sink_waterSound.isPlaying()) {
+    sink_waterSound.stop();
+  }
+
+  if (minigameSuccessSound) {
+    minigameSuccessSound.play();
+  }
+
+  return;
+}
   sink_chance--;
   if (sink_chance === 2) sink_speed = SINK_SPD_FAIL1;
   else if (sink_chance === 1) sink_speed = SINK_SPD_FAIL2;
   for (let i = 0; i < 80; i++) {
     sink_particles.push({ x: 370, y: 280, vx: random(-8,8), vy: random(-8,8), life: random(20,45) });
   }
-  if (sink_chance <= 0) sink_state = 'explode';
+  if (sink_chance <= 0) {
+  sink_state = 'explode';
+
+  if (sink_waterSound && sink_waterSound.isPlaying()) {
+    sink_waterSound.stop();
+  }
+
+  if (minigameFailSound) {
+    minigameFailSound.play();
+  }
+}
 }
 
 function sink_updateParticles() {
@@ -253,6 +278,9 @@ function sinkMousePressed() {
 
 // 클리어 → 방으로 복귀하며 1단계 완료 처리
 function sinkComplete() {
+  if (sink_waterSound && sink_waterSound.isPlaying()) {
+  sink_waterSound.stop();
+}
   solvedCount = 1;
   gameState = 'room';
   // 방의 물 페널티 등 1단계 상태를 깨끗이 하기 위해 다시 들어가되 solvedCount 유지

@@ -8,10 +8,24 @@
 //   DEV_SKIP_INTRO = true  → 인트로를 건너뛰고 바로 방에서 시작
 //   DEV_START_STAGE        → 방에서 시작할 단계(solvedCount). 0=처음, 3=텀블러 차례 등
 //   ⚠ 배포(제출) 전에는 반드시 DEV_SKIP_INTRO = false 로 되돌리세요!
+let sink_waterSound;
+let wasteSound;
+let minigameSuccessSound;
+let minigameFailSound;
+let introSound;
+let errorSound;
 const DEV_SKIP_INTRO = false;
 const DEV_START_STAGE = 0;
 // ─────────────────────────────────────────────
 
+function preload() {
+  sink_waterSound = loadSound('assets/sounds/sink.mp3');
+  wasteSound = loadSound('assets/sounds/waste.mp3');
+  minigameSuccessSound = loadSound('assets/sounds/minigame_s.mp3');
+  minigameFailSound = loadSound('assets/sounds/minigame_f.mp3');
+  introSound = loadSound('assets/sounds/intro.mp3');
+  errorSound = loadSound('assets/sounds/error.mp3');
+}
 function setup() {
   // 캔버스를 창 전체 크기로 (풀스크린). 게임은 GW×GH 가상 좌표 위에 그리고
   // draw()에서 통째로 확대/중앙정렬합니다.
