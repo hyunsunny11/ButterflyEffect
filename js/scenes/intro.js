@@ -65,6 +65,10 @@ function enterIntro() {
   butterflyX = 130;
   butterflyY = 220;
   butterflyScale = 1.0;
+
+  if (introSound && !introSound.isPlaying()) {
+    introSound.play();
+  }
 }
 
 // 파티클 (바람 흐름)
@@ -460,7 +464,10 @@ function drawSkipHint() {
 // ── 입력 ──
 function introMousePressed() {
   if (phase === 'message' && timer > 80) {
-    // 다음 씬(ROOM)으로 전환
+    if (introSound && introSound.isPlaying()) {
+      introSound.stop();
+    }
+
     gameState = 'room';
     enterRoom();
   }
@@ -468,6 +475,10 @@ function introMousePressed() {
 
 function introKeyPressed() {
   if (phase === 'message' && timer > 80) {
+    if (introSound && introSound.isPlaying()) {
+      introSound.stop();
+    }
+
     gameState = 'room';
     enterRoom();
   }

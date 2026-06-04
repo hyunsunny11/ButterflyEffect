@@ -117,6 +117,11 @@ function makePopup() {
   const t = cm_deck.pop();
   const w = floor(random(214, 268));
   const h = 150;
+
+  if (errorSound) {
+    errorSound.play();
+  }
+  
   return {
     id: cm_seq++,
     t,
