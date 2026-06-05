@@ -298,23 +298,6 @@ function drawRoomHud() {
   pop();
 }
 
-// TV 위 말풍선
-function drawBubble() {
-  let tv = roomObjects.find(o => o.id === 'tv');
-  if (!tv) return;
-  let a = min(255, roomBubbleT * 5);
-  let bx = tv.x, by = tv.y - tv.h / 2 - 26;
-  push(); rectMode(CENTER); noStroke();
-  textSize(14); textAlign(CENTER, CENTER);
-  let tw = max(120, textWidth(roomBubble) + 28);
-  fill(255, 255, 255, a);
-  rect(bx, by, tw, 34, 10);
-  // 꼬리
-  triangle(bx - 8, by + 16, bx + 8, by + 16, bx, by + 28);
-  fill(30, 30, 40, a);
-  text(roomBubble, bx, by);
-  pop();
-}
 
 // ── 익사 화면 ──
 function drawDrowned() {
@@ -466,16 +449,16 @@ function handleStage1Click(o) {
       enterSinkGame();
       break;
     case 'recycle':
-      roomPopup = '아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!';
-      roomPopupT = 180;
+      roomPopup = "'아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!'";
+      roomPopupT = 120;
       break;
     case 'computer':
-      roomPopup = '조금 이따 게임하려고 켜둔 거야.';
-      roomPopupT = 180;
+      roomPopup = "'조금 이따 게임하려고 켜둔 거야.'";
+      roomPopupT = 120;
       break;
     case 'tv':
-      roomBubble = '9시 뉴스 봐야 해!';
-      roomBubbleT = 180;
+      roomPopup = "'9시 뉴스 봐야 해!'";
+      roomPopupT = 120;
       break;
     case 'light':
       // 화면 암전 5초 후 팝업
