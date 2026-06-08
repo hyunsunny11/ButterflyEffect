@@ -63,6 +63,9 @@ function draw() {
     case 'title':
       updateTitle();
       break;
+    case 'gameover':
+      updateGameOver();
+      break;
     case 'intro':
       updateIntro();
       break;
@@ -113,6 +116,9 @@ function mousePressed() {
     case 'title':
       titleMousePressed();
       break;
+    case 'gameover':
+      gameOverMousePressed();
+      break;
     case 'intro':
       introMousePressed();
       break;
@@ -160,6 +166,9 @@ function keyPressed() {
     case 'title':
       titleKeyPressed();
       break;
+    case 'gameover':
+      gameOverKeyPressed();
+      break;
     case 'intro':
       introKeyPressed();
       break;
@@ -187,7 +196,6 @@ function keyPressed() {
     case 'ending_sinkhole':
       sinkholeEndingKeyPressed();
       break;
-    
     case 'ending_tree':
       treeEndingKeyPressed();
       break;

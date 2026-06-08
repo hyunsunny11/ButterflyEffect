@@ -84,10 +84,16 @@ function cutoonAdvance() {
     ct_inputLock = true;
     setTimeout(() => { ct_inputLock = false; }, 300);
   } else {
-    // 마지막 컷 → 방으로 복귀
-    solvedCount = ct_retStage;
-    gameState   = 'room';
-    enterRoom(ct_retStage);
+    // 마지막 컷 → 복귀
+    if (ct_retStage === -1) {
+      // 클리어 엔딩 → 게임 오버(엔딩) 화면
+      gameState = 'gameover';
+      enterGameOver();
+    } else {
+      solvedCount = ct_retStage;
+      gameState   = 'room';
+      enterRoom(ct_retStage);
+    }
   }
 }
 
