@@ -32,6 +32,8 @@ let tv_failAt   = 0;
 let tv_startMs  = 0;
 let tv_remain   = 7;
 let tv_started  = false;
+let tv_winAlpha = 0, tv_winFadeAmt = 3;
+let tv_failAlpha = 0, tv_failFadeAmt = 3;
 
 /* ── 씬 진입 ── */
 function enterTV() {
@@ -58,6 +60,8 @@ function enterTV() {
   tv_startMs   = millis();
   tv_remain    = tv_timeLimit;
   tv_started   = true;
+  tv_winAlpha = 0;  tv_winFadeAmt = 3;
+  tv_failAlpha = 0; tv_failFadeAmt = 3;
 }
 
 function tv_shuffleDerangement(n) {
@@ -137,7 +141,10 @@ function updateTV() {
 /* ── 입력 ── */
 function tvMousePressed() {
   if (tv_phase === 'win')  { if (millis() - tv_winAt  > 900) tv_onClear(); return; }
-  if (tv_phase === 'fail') return;
+  if (tv_phase === 'fail') {
+  if (millis() - tv_failAt > 300) tv_onFail();
+  return;
+}
 
   const mx = vmouseX(), my = vmouseY();
   if (tv_unlocked && tv_inRect(mx, my, tv_plug.x - 30, tv_plug.y - 26, 60, 52)) {
@@ -313,9 +320,11 @@ function tv_drawPlug() {
   rect(x - 12, socketY - 6, 6, 14, 2);
   rect(x + 6,  socketY - 6, 6, 14, 2);
   stroke(180, 185, 200); strokeWeight(4);
-  const pinTop = socketY + 4 - constrain(pulled, 0, 26);
-  line(x - 9, y - 22, x - 9, pinTop);
-  line(x + 9, y - 22, x + 9, pinTop);
+  const pinLen = 20; // 핀의 고정 길이
+const pinBottom = y - 22; // 핀 아랫부분 = 플러그 몸체 상단에 고정
+const pinTopY = pinBottom - pinLen; // 핀 윗부분 = 항상 20px 위
+line(x - 9, pinBottom, x - 9, pinTopY);
+line(x + 9, pinBottom, x + 9, pinTopY);
   noStroke();
   const body = tv_unlocked ? color(70, 180, 110) : color(120, 130, 150);
   fill(0, 120); rect(x - 28, y - 22 + 3, 56, 46, 6);
@@ -377,9 +386,12 @@ function tv_drawWin() {
   fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(42);
   text('TV 끄기 성공!', GW / 2, GH / 2);
   if (t > 900) {
-    const alpha = 120 + sin(frameCount * 0.08) * 100;
-    fill(200, 230, 255, alpha); textSize(18);
-    text('PRESS ANY KEY OR CLICK TO CONTINUE', GW / 2, GH / 2 + 70);
+    tv_winAlpha += tv_winFadeAmt;
+    if (tv_winAlpha <= 0 || tv_winAlpha >= 255) tv_winFadeAmt *= -1;
+    tv_winAlpha = constrain(tv_winAlpha, 0, 255);
+    fill(255, tv_winAlpha);
+    textSize(18);
+    text('PRESS ANY KEY OR CLICK TO CONTINUE', GW / 2, GH / 2 + 60);
   }
   pop();
 }
@@ -397,10 +409,12 @@ function tv_drawFail() {
   fill(200); textSize(15);
   text('대기전력이 줄줄 새어 나갑니다…', GW / 2, GH / 2 + 2);
   text('정렬 ' + solved + ' / 4', GW / 2, GH / 2 + 30);
-  if (frameCount % 60 < 38) {
-    fill(255); textSize(20);
-    text('PRESS ANY KEY OR CLICK TO RETRY', GW / 2, GH / 2 + 86);
-  }
+  tv_failAlpha += tv_failFadeAmt;
+  if (tv_failAlpha <= 0 || tv_failAlpha >= 255) tv_failFadeAmt *= -1;
+  tv_failAlpha = constrain(tv_failAlpha, 0, 255);
+  fill(255, tv_failAlpha);
+  textSize(18);
+  text('PRESS ANY KEY OR CLICK TO RETRY', GW / 2, GH / 2 + 80);
   pop();
 }
 

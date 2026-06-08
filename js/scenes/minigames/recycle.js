@@ -11,6 +11,8 @@ const RC_SRC = 600;
 const RC_PIX = 4;
 const RC_BIN_TYPES = ['종이', '캔', '플라스틱'];
 
+let rc_clearAlpha = 0, rc_clearFadeAmt = 3;
+let rc_failAlpha = 0, rc_failFadeAmt = 3;
 let rc_scale = 1, rc_offX = 0, rc_offY = 0;
 function rcx(v) { return rc_offX + v * rc_scale; }
 function rcy(v) { return rc_offY + v * rc_scale; }
@@ -23,6 +25,8 @@ function rc_randomBinType() {
 }
 
 function enterRecycleGame() {
+  rc_clearAlpha = 0; rc_clearFadeAmt = 3;
+  rc_failAlpha = 0;  rc_failFadeAmt = 3;
   rc_scale = GH / RC_SRC;
   rc_offX = (GW - RC_SRC * rc_scale) / 2;
   rc_offY = 0;
@@ -37,6 +41,8 @@ function enterRecycleGame() {
 function updateRecycleGame() {
   // 게임 배경 (게임 영역만)
   push();
+  textFont("monospace"); // ← 추가
+  textStyle(BOLD);       // ← 추가
   rectMode(CORNER); noStroke();
   fill(22, 28, 40);
   rect(rcx(0), rcy(0), rcs(RC_SRC), rcs(RC_SRC));
@@ -110,49 +116,87 @@ function rc_handleCatch(item) {
 function rc_drawItems() {
   for (let item of rc_items) {
     switch (item.type) {
-      case '종이':     rc_drawPaper(item.x, item.y); break;
-      case '캔':       rc_drawCokeCan(item.x, item.y); break;
-      case '플라스틱': rc_drawBottle(item.x, item.y); break;
-      case '음식물':   rc_drawFood(item.x, item.y); break;
+      case '종이':     rc_drawPaper(item.x, item.y);    break;
+      case '캔':       rc_drawCokeCan(item.x, item.y);  break;
+      case '플라스틱': rc_drawBottle(item.x, item.y);   break;
+      case '음식물':   rc_drawFood(item.x, item.y);     break;
     }
   }
 }
-function rc_rect(x, y, w, h) { rect(rcx(x), rcy(y), rcs(w), rcs(h)); }
+function rc_rect(x, y, w, h) {
+  rectMode(CORNER); // ← 추가
+  rect(rcx(x), rcy(y), rcs(w), rcs(h)); }
 
 function rc_drawPaper(x, y) {
-  fill(245); rc_rect(x, y, 20, 28);
-  fill(180); rc_rect(x+4, y+6, 12, 2); rc_rect(x+4, y+12, 12, 2); rc_rect(x+4, y+18, 12, 2);
+  noStroke();
+  fill(245);
+  rc_rect(x, y, 20, 28);
+  fill(180);
+  rc_rect(x+4, y+6,  12, 2);
+  rc_rect(x+4, y+12, 12, 2);
+  rc_rect(x+4, y+18, 12, 2);
 }
+
 function rc_drawCokeCan(x, y) {
-  fill(220,40,40); rc_rect(x, y, 18, 28);
-  fill(255); rc_rect(x+7, y+4, 4, 20);
-  fill(180); rc_rect(x, y, 18, 4); rc_rect(x, y+24, 18, 4);
+  noStroke();
+  fill(220, 40, 40);
+  rc_rect(x, y, 18, 28);
+  fill(255);
+  rc_rect(x+7, y+4, 4, 20);
+  fill(180);
+  rc_rect(x,   y,    18, 4);
+  rc_rect(x,   y+24, 18, 4);
 }
+
 function rc_drawBottle(x, y) {
-  fill(120,220,255); rc_rect(x+6, y, 6, 6); rc_rect(x+2, y+6, 14, 22);
-  fill(240); rc_rect(x+5, y+12, 8, 6);
+  noStroke();
+  fill(120, 220, 255);
+  rc_rect(x+6, y,   6,  6);
+  rc_rect(x+2, y+6, 14, 22);
+  fill(240);
+  rc_rect(x+5, y+12, 8, 6);
 }
+
 function rc_drawFood(x, y) {
-  fill(90,180,90); rc_rect(x+2, y+2, 16, 16);
-  fill(120,80,40); rc_rect(x+4, y+4, 4, 4); rc_rect(x+12, y+8, 4, 4); rc_rect(x+8, y+12, 4, 4);
+  noStroke();
+  fill(90, 180, 90);
+  rc_rect(x+2, y+2, 16, 16);
+  fill(120, 80, 40);
+  rc_rect(x+4,  y+4,  4, 4);
+  rc_rect(x+12, y+8,  4, 4);
+  rc_rect(x+8,  y+12, 4, 4);
 }
 
 function rc_drawBasket() {
   let bx = rc_basket.x, by = rc_basket.y;
   noStroke();
-  fill(0, 60); ellipse(rcx(bx), rcy(by+60), rcs(90), rcs(16));
-  // (뚜껑 제거) 사다리꼴 몸통만 그림
+
+  // 그림자
+  fill(0, 60);
+  ellipse(rcx(bx), rcy(by+60), rcs(90), rcs(16));
+
+  // 몸통 (뚜껑 제거)
   fill(80);
-  quad(rcx(bx-40), rcy(by), rcx(bx+40), rcy(by), rcx(bx+30), rcy(by+55), rcx(bx-30), rcy(by+55));
-  fill(255); textAlign(CENTER, BASELINE); textSize(rcs(16)); textStyle(BOLD);
+  quad(rcx(bx-40), rcy(by),    rcx(bx+40), rcy(by),
+       rcx(bx+30), rcy(by+55), rcx(bx-30), rcy(by+55));
+
+  // 종류 표시
+  push();
+  textFont("monospace");
+  fill(255); textAlign(CENTER, BASELINE); textSize(rcs(14)); textStyle(BOLD);
   text(rc_basket.type, rcx(bx), rcy(by+28));
+  pop();
+
+  // 테두리
   noFill(); stroke(40);
-  quad(rcx(bx-40), rcy(by), rcx(bx+40), rcy(by), rcx(bx+30), rcy(by+55), rcx(bx-30), rcy(by+55));
+  quad(rcx(bx-40), rcy(by),    rcx(bx+40), rcy(by),
+       rcx(bx+30), rcy(by+55), rcx(bx-30), rcy(by+55));
   noStroke();
 }
 
 function rc_drawUI() {
   push();
+  textFont("monospace");
   fill(255); textAlign(LEFT, BASELINE); textStyle(BOLD);
   textSize(rcs(24)); text('점수 : ' + rc_score, rcx(20), rcy(40));
   textSize(rcs(16));
@@ -202,21 +246,33 @@ function rc_drawParticles() {
 
 function rc_drawClearScreen() {
   push();
+  textFont("monospace");
   fill(0, 180); rectMode(CORNER); rect(rcx(0), rcy(0), rcs(RC_SRC), rcs(RC_SRC));
-  fill(255); textAlign(CENTER, CENTER); textSize(rcs(42));
+  fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(rcs(42));
   text('분리수거 성공!', rcx(RC_SRC/2), rcy(RC_SRC/2 - 40));
-  textSize(rcs(18)); fill(200,230,255);
+
+  rc_clearAlpha += rc_clearFadeAmt;
+  if (rc_clearAlpha <= 0 || rc_clearAlpha >= 255) rc_clearFadeAmt *= -1;
+  rc_clearAlpha = constrain(rc_clearAlpha, 0, 255);
+  fill(255, rc_clearAlpha);
+  textSize(rcs(18));
   text('PRESS ANY KEY OR CLICK TO CONTINUE', rcx(RC_SRC/2), rcy(RC_SRC/2 + 40));
   pop();
 }
 function rc_drawExplosionScreen() {
   push();
+  textFont("monospace");
   fill(0, 180); rectMode(CORNER); rect(rcx(0), rcy(0), rcs(RC_SRC), rcs(RC_SRC));
-  fill(255, 70, 70); textAlign(CENTER, CENTER); textSize(rcs(42));
+  fill(255, 70, 70); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(rcs(42));
   text('쓰레기통 폭발!', rcx(RC_SRC/2), rcy(RC_SRC/2 - 40));
-  fill(255); textSize(rcs(20)); text('분리수거 실패', rcx(RC_SRC/2), rcy(RC_SRC/2));
-  let alpha = 120 + sin(frameCount * 0.037) * 135;
-  fill(255, alpha); textSize(rcs(20));
+  fill(255); textSize(rcs(20));
+  text('분리수거 실패', rcx(RC_SRC/2), rcy(RC_SRC/2));
+
+  rc_failAlpha += rc_failFadeAmt;
+  if (rc_failAlpha <= 0 || rc_failAlpha >= 255) rc_failFadeAmt *= -1;
+  rc_failAlpha = constrain(rc_failAlpha, 0, 255);
+  fill(255, rc_failAlpha);
+  textSize(rcs(18));
   text('PRESS ANY KEY OR CLICK TO RETRY', rcx(RC_SRC/2), rcy(RC_SRC/2 + 80));
   pop();
 }

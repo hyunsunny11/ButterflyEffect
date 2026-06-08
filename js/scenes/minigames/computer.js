@@ -1,5 +1,5 @@
-/* =====================================================================
- *  나비효과 게임 — ③ 컴퓨터 "창 끄기" 미니게임  (computer_minigame.js)
+//* =====================================================================
+ /*  나비효과 게임 — ③ 컴퓨터 "창 끄기" 미니게임  (computer_minigame.js)
  * ---------------------------------------------------------------------
  *  ▣ 단독 실행: HTML에서 p5.js를 먼저 로드한 뒤 이 파일을 불러오면 됨.
  *      <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
@@ -85,6 +85,7 @@ let cm_failAt = 0;       // 시간 초과 시각(ms)
 let cm_seq = 0;          // 팝업 고유 id
 let cm_shake = 0;        // 잘못 클릭 시 흔들림 효과
 let cm_started = false;
+let cm_winAlpha = 0, cm_winFadeAmt = 3;
 
 /* ── 씬 진입 ── */
 function enterComputer() {
@@ -101,6 +102,10 @@ function enterComputer() {
   cm_seq = 0;
   cm_shake = 0;
   cm_started = true;
+  cm_failAlpha = 0;
+  cm_failFadeAmt = 3;
+  cm_winAlpha = 0;
+  cm_winFadeAmt = 3;
 
   // 진입 즉시: cm_burst 개를 0~900ms 사이에 흩뿌려 "다다닥" 느낌
   for (let i = 0; i < cm_burst; i++) {
@@ -194,7 +199,10 @@ function computerMousePressed() {
     if (millis() - cm_winAt > 900) cm_onClear();
     return;
   }
-  if (cm_phase === 'fail') return;  // 실패 화면에선 키로만 재시작
+  if (cm_phase === 'fail') {
+  if (millis() - cm_failAt > 300) cm_onFail();
+  return;
+}
 
   const mx = vmouseX(), my = vmouseY();
 
@@ -363,7 +371,7 @@ function drawTaskbar() {
 
   // ★ 끝나는 기준을 보여주는 카운터
   bevelRect(GW - 168, ty + 4, 96, 22, '#d4d0c8', false);
-  textAlign(CENTER, CENTER); textSize(12); fill('#101010');
+  textAlign(CENTER, CENTER); textSize(10); fill('#101010');
   text('닫은 창 ' + cm_closed + ' / ' + cm_budget, GW - 120, ty + 15);
 
   // 실시간 카운트다운(6초 이하 빨갛게 깜빡)
@@ -391,34 +399,41 @@ function drawWin() {
   fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(42);
   text('창 닫기 성공!', GW / 2, GH / 2);
   if (t > 900) {
-    const alpha = 120 + sin(frameCount * 0.08) * 100;
-    fill(200, 230, 255, alpha); textSize(18);
-    text('PRESS ANY KEY OR CLICK TO CONTINUE', GW / 2, GH / 2 + 70);
+    cm_winAlpha += cm_winFadeAmt;
+    if (cm_winAlpha <= 0 || cm_winAlpha >= 255) cm_winFadeAmt *= -1;
+    cm_winAlpha = constrain(cm_winAlpha, 0, 255);
+    fill(255, cm_winAlpha);  // 실패와 동일: 흰색 페이드
+    textSize(18);
+    text('PRESS ANY KEY OR CLICK TO CONTINUE', GW / 2, GH / 2 + 60);
   }
   pop();
 }
 
 function drawFail() {
   const t = millis() - cm_failAt;
-  push();
-  fill(0, min(190, t * 0.5)); rect(0, 0, GW, GH);   // 전체 화면 암전
-  textAlign(CENTER, CENTER); textStyle(BOLD);
 
+  // sink_drawFail처럼 페이드 인/아웃 알파 변수 필요 → cm_failAlpha 추가
+  // (파일 상단 전역변수에 아래 두 줄 추가)
+  // let cm_failAlpha = 0, cm_failFadeAmt = 3;
+
+  push();
+  fill(0, min(190, t * 0.5)); rect(0, 0, GW, GH);
+  textAlign(CENTER, CENTER); textStyle(BOLD);
   fill(255, 90, 90); textSize(40);
   text('⏰ 시간 초과', GW / 2, GH / 2 - 78);
-
   fill(255); textSize(20);
   text('창을 제때 닫지 못했습니다!', GW / 2, GH / 2 - 30);
-
   fill(200); textSize(15);
   text('게임만 하다 지구가 멸망할 뻔…', GW / 2, GH / 2 + 2);
   text('닫은 창 ' + cm_closed + ' / ' + cm_budget, GW / 2, GH / 2 + 30);
 
-  // PRESS ANY KEY TO RETRY (점멸)
-  if (frameCount % 60 < 38) {
-    fill(255); textSize(20);
-    text('PRESS ANY KEY OR CLICK TO RETRY', GW / 2, GH / 2 + 86);
-  }
+  // ↓ 이 블록을 교체
+  cm_failAlpha += cm_failFadeAmt;
+  if (cm_failAlpha <= 0 || cm_failAlpha >= 255) cm_failFadeAmt *= -1;
+  cm_failAlpha = constrain(cm_failAlpha, 0, 255);
+  fill(255, cm_failAlpha);         // ← sink_drawFail과 동일: 흰색 페이드
+  textSize(18);                    // ← 18로 통일 (기존: 20)
+  text('PRESS ANY KEY OR CLICK TO RETRY', GW / 2, GH / 2 + 80); // ← y 통일
   pop();
 }
 

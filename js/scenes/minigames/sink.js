@@ -28,7 +28,7 @@ function ssize(v) { return v * sink_scale; }
 // ── 상태 ──
 let sink_angle, sink_speed, sink_chance, sink_state;
 let sink_particles = [];
-let sink_textAlpha = 0, sink_fadeAmount = 3;
+let sink_textAlpha = 0, sink_fadeAmount = 3; let sink_clearAlpha = 0, sink_clearFadeAmt = 3;
 let sink_pipeBuffer = null;
 
 function enterSinkGame() {
@@ -36,6 +36,8 @@ function enterSinkGame() {
   sink_scale = GH / SINK_SRC;
   sink_offX = (GW - SINK_SRC * sink_scale) / 2;
   sink_offY = 0;
+  sink_clearAlpha = 0;
+  sink_clearFadeAmt = 3;
 
   sink_angle = random(360);
   sink_speed = SINK_SPD_DEFAULT;
@@ -60,6 +62,8 @@ function enterSinkGame() {
 function updateSinkGame() {
   // 게임 자체 배경 (게임 영역만 칠함)
   push();
+  textFont("monospace"); // ← 추가
+  textStyle(BOLD);       // ← 추가 (이미 각 함수에 있지만 기본값 통일용)
   rectMode(CORNER);
   noStroke();
   fill(22, 28, 40);
@@ -183,7 +187,7 @@ function sink_drawDynamicSink() {
 
 function sink_tryLock() {
   let a = ((sink_angle % 360) + 360) % 360;
-  let success = (a>=0&&a<=10)||(a>=170&&a<=190)||(a>=350&&a<=360);
+  let success = (a>=0 && a<=10) || (a>=170 && a<=190) || (a>=350 && a<=360);
   if (success) {
   sink_state = 'clear';
 
@@ -233,6 +237,7 @@ function sink_drawParticles() {
 
 function sink_drawUI() {
   push();
+  textFont("monospace"); // ← 추가
   fill(255); textSize(ssize(24)); textStyle(BOLD); textAlign(LEFT, BASELINE);
   text('남은 기회 : ' + sink_chance, sx(20), sy(40));
   textSize(ssize(16));
@@ -242,16 +247,23 @@ function sink_drawUI() {
 
 function sink_drawClear() {
   push();
+  textFont("monospace");
   fill(0, 180); rectMode(CORNER); rect(sx(0), sy(0), ssize(SINK_SRC), ssize(SINK_SRC));
   fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(ssize(42));
   text('수도 잠그기 성공!', sx(SINK_SRC/2), sy(SINK_SRC/2));
-  textSize(ssize(18)); fill(200, 230, 255);
+
+  sink_clearAlpha += sink_clearFadeAmt;
+  if (sink_clearAlpha <= 0 || sink_clearAlpha >= 255) sink_clearFadeAmt *= -1;
+  sink_clearAlpha = constrain(sink_clearAlpha, 0, 255);
+  fill(255, sink_clearAlpha);      // RETRY와 동일: 흰색 페이드
+  textSize(ssize(18));             // RETRY와 동일: 18
   text('PRESS ANY KEY OR CLICK TO CONTINUE', sx(SINK_SRC/2), sy(SINK_SRC/2) + ssize(60));
   pop();
 }
 
 function sink_drawFail() {
   push();
+  textFont("monospace"); // ← 추가
   fill(0, 180); rectMode(CORNER); rect(sx(0), sy(0), ssize(SINK_SRC), ssize(SINK_SRC));
   fill(120, 220, 255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(ssize(42));
   text('수도관 폭발!', sx(SINK_SRC/2), sy(SINK_SRC/2) - ssize(40));
