@@ -8,3 +8,10 @@ let gameState = 'intro';
 
 // 방에서 해결한 오브젝트 수 (순서 상태머신에서 사용 예정)
 let solvedCount = 0;
+// ── 사운드 변수 (main.js preload에서 로드) ──
+let introSound          = null;
+let minigameSuccessSound = null;
+let minigameFailSound   = null;
+let errorSound          = null;
+let wasteSound          = null;
+let sink_waterSound     = null;
