@@ -14,7 +14,7 @@ let minigameSuccessSound;
 let minigameFailSound;
 let introSound;
 let errorSound;
-const DEV_SKIP_INTRO = false;
+const DEV_SKIP_INTRO = true;
 const DEV_START_STAGE = 0;
 // ─────────────────────────────────────────────
 

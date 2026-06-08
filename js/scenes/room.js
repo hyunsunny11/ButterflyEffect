@@ -49,14 +49,44 @@ const WATER_DELAY = 300;   // 진입 후 5초(60fps*5)
 const WATER_RISE = 600;    // 10초에 걸쳐 차오름
 
 function buildRoomObjects() {
+  // 배경 이미지가 단계마다 달라 일부 오브젝트 좌표 보정
+  // roomBgs[solvedCount]: bg3=solvedCount3, bg4=solvedCount4, bg5=solvedCount5
+  let light, tv, tumbler, door;
+
+  if (solvedCount === 3) {
+    // 4/6 화면 (room_bg3.png)
+    light   = { x: 565, y: 203, w:  12, h:  22 };
+    tv      = { x: 298, y: 229, w: 150, h: 102 };
+    tumbler = { x:  55, y: 150, w:  27, h:  43 };
+    door    = { x: 626, y: 219, w:  88, h: 240 };
+  } else if (solvedCount === 4) {
+    // 5/6 화면 (room_bg4.png)
+    light   = { x: 567, y: 201, w:  12, h:  24 };
+    tv      = { x: 299, y: 228, w: 158, h: 105 };
+    tumbler = { x:  61, y: 145, w:  23, h:  40 };
+    door    = { x: 627, y: 216, w:  86, h: 239 };
+  } else if (solvedCount === 5) {
+    // 6/6 화면 (room_bg5.png)
+    light   = { x: 567, y: 200, w:  13, h:  24 };
+    tv      = { x: 299, y: 225, w: 148, h:  99 };
+    tumbler = { x:  61, y: 145, w:  23, h:  40 };
+    door    = { x: 627, y: 216, w:  85, h: 238 };
+  } else {
+    // 1~3/6, 암전 — 기존 기본값
+    light   = { x: 562, y: 199, w:  12, h:  20 };
+    tv      = { x: 299, y: 225, w: 148, h:  99 };
+    tumbler = { x:  61, y: 145, w:  23, h:  40 };
+    door    = { x: 623, y: 213, w:  86, h: 230 };
+  }
+
   return [
-    { id: 'light',   label: '조명',     x: 562, y: 199, w: 12,  h: 20  },
-    { id: 'tv',      label: 'TV',       x: 299, y: 225, w: 148, h: 99  },
-    { id: 'sink',    label: '싱크대',   x: 102, y: 273, w: 170, h: 146 },
-    { id: 'recycle', label: '분리수거', x: 107, y: 395, w: 147, h: 81  },
-    { id: 'computer',label: '컴퓨터',   x: 491, y: 229, w: 70,  h: 47  },
-    { id: 'tumbler', label: '텀블러',   x: 61,  y: 145, w: 23,  h: 40  },
-    { id: 'door',    label: '현관문',   x: 623, y: 213, w: 86,  h: 230 },
+    { id: 'light',    label: '조명',     ...light   },
+    { id: 'tv',       label: 'TV',       ...tv      },
+    { id: 'sink',     label: '싱크대',   x: 102, y: 273, w: 170, h: 146 },
+    { id: 'recycle',  label: '분리수거', x: 107, y: 395, w: 147, h:  81 },
+    { id: 'computer', label: '컴퓨터',   x: 491, y: 229, w:  70, h:  47 },
+    { id: 'tumbler',  label: '텀블러',   ...tumbler },
+    { id: 'door',     label: '현관문',   ...door    },
   ];
 }
 
@@ -120,6 +150,7 @@ function roomReenterAfterMinigame() {
 }
 
 function updateRoom() {
+  roomObjects = buildRoomObjects();  // solvedCount 변경 시 즉시 반영
   if (roomEnding) { drawEnding(); return; }
 
   // ── 익사 상태: 물 가득 + 바다생물 + 리스타트 ──
@@ -298,6 +329,23 @@ function drawRoomHud() {
   pop();
 }
 
+// TV 위 말풍선
+function drawBubble() {
+  let tv = roomObjects.find(o => o.id === 'tv');
+  if (!tv) return;
+  let a = min(255, roomBubbleT * 5);
+  let bx = tv.x, by = tv.y - tv.h / 2 - 26;
+  push(); rectMode(CENTER); noStroke();
+  textSize(14); textAlign(CENTER, CENTER);
+  let tw = max(120, textWidth(roomBubble) + 28);
+  fill(255, 255, 255, a);
+  rect(bx, by, tw, 34, 10);
+  // 꼬리
+  triangle(bx - 8, by + 16, bx + 8, by + 16, bx, by + 28);
+  fill(30, 30, 40, a);
+  text(roomBubble, bx, by);
+  pop();
+}
 
 // ── 익사 화면 ──
 function drawDrowned() {
@@ -449,16 +497,16 @@ function handleStage1Click(o) {
       enterSinkGame();
       break;
     case 'recycle':
-      roomPopup = "'아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!'";
-      roomPopupT = 120;
+      roomPopup = '아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!';
+      roomPopupT = 180;
       break;
     case 'computer':
-      roomPopup = "'조금 이따 게임하려고 켜둔 거야.'";
-      roomPopupT = 120;
+      roomPopup = '조금 이따 게임하려고 켜둔 거야.';
+      roomPopupT = 180;
       break;
     case 'tv':
-      roomPopup = "'9시 뉴스 봐야 해!'";
-      roomPopupT = 120;
+      roomBubble = '9시 뉴스 봐야 해!';
+      roomBubbleT = 180;
       break;
     case 'light':
       // 화면 암전 5초 후 팝업
