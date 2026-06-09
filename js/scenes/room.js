@@ -28,6 +28,7 @@ let roomBgs = {};
 let roomObjects = [];
 let roomHoverId = null;
 let roomEnding = null;
+let seenEndingStages = new Set();  // 현관문 엔딩을 본 스테이지 번호 기록
 let roomDebugBoxes = false;
 
 // 팝업 / 말풍선
@@ -97,8 +98,13 @@ function nextCorrectId() {
 function isObjEnabled(o) {
   if (o.id === 'door') return true;
   if (solvedCount >= ROOM_ORDER.length) return false; // 암전
-  // 현재 차례 오브젝트만 활성화
-  return o.id === ROOM_ORDER[solvedCount];
+  // 현 스테이지 엔딩을 보고 온 뒤에만 다른 오브젝트 활성화
+  if (!seenEndingStages.has(solvedCount)) return false;
+  // 텀블러: 자기 차례(=3단계)가 오기 전엔 순수 장식
+  let idx = ROOM_ORDER.indexOf(o.id);
+  if (idx < solvedCount) return false;          // 이미 처리됨
+  if (o.id === 'tumbler' && solvedCount !== ROOM_ORDER.indexOf('tumbler')) return false;
+  return true;
 }
 
 function isBlackout() { return solvedCount >= ROOM_ORDER.length; }
@@ -119,6 +125,8 @@ function enterRoom(startStage) {
   roomBubble = ''; roomBubbleT = 0;
   lightDarkT = 0;
   solvedCount = (startStage !== undefined) ? startStage : 0;
+  // hasSeenEnding은 R키 리셋(startStage 미지정) 또는 익사 시에만 초기화
+  if (startStage === undefined) seenEndingStages = new Set();
   // 물 페널티 초기화
   roomEnterFrame = frameCount;
   waterStarted = false;
@@ -316,7 +324,7 @@ function drawRoomHud() {
     '집돌이, 집순이신가요? 좀 나갑시다…',
     '이젠 저도 모르겠습니다. 알아서 하세요.',
   ];
-  if (!isBlackout() && solvedCount < STAGE_MSGS.length) {
+  if (!isBlackout() && !seenEndingStages.has(solvedCount) && solvedCount < STAGE_MSGS.length) {
     const msg = STAGE_MSGS[solvedCount];
     // TV 오른쪽 끝(373)과 전등(562) 사이 중앙, TV 상단(175) 근처
     const mx = 330, my = 80;
@@ -445,14 +453,14 @@ function drawStarfish(x, y, c) {
 // ── 입력 ──
 function roomMousePressed() {
   if (roomEnding) { enterRoom(); return; }
-  if (drowned) { enterRoom(); return; }
+  if (drowned) { seenEndingStages = new Set(); enterRoom(); return; }
   if (lightDarkT > 0) return; // 암전 중엔 입력 무시
 
   let mx = vmouseX(), my = vmouseY();
   for (let o of roomObjects) {
     if (!(abs(mx - o.x) <= o.w / 2 && abs(my - o.y) <= o.h / 2)) continue;
 
-    if (o.id === 'door') { showEnding(solvedCount); return; }
+    if (o.id === 'door') { seenEndingStages.add(solvedCount); showEnding(solvedCount); return; }
     if (isBlackout()) return;
     if (!isObjEnabled(o)) { return; }
 
@@ -472,11 +480,24 @@ function roomMousePressed() {
         lightDarkT = 300;
         return;
       }
-      roomPopup = '아직 순서가 아니에요! (먼저 ' + labelOf(nextCorrectId()) + ')';
-      roomPopupT = 120;
+      // 스테이지/오브젝트별 맞춤 멘트
+      roomPopup = getWrongClickMsg(solvedCount, o.id);
+      roomPopupT = 180;
     }
     return;
   }
+}
+
+// 스테이지별 오브젝트 클릭 멘트
+function getWrongClickMsg(stage, objId) {
+  const msgs = {
+    1: { tv:       "'TV 끄면 집이 너무 조용해질 것 같아...'",
+         computer: "'아직 게임 못했어!'" },
+    2: { tv:       "'뉴스 끝나고 월드컵 봐야지.'" },
+    3: { tv:       '아빠 안 잔다.' },
+  };
+  if (msgs[stage] && msgs[stage][objId]) return msgs[stage][objId];
+  return '아직 순서가 아니에요! (먼저 ' + labelOf(nextCorrectId()) + ')';
 }
 
 // 오브젝트 → 미니게임 진입. 아직 미니게임이 없는 건 임시로 단계만 올림.
@@ -513,16 +534,16 @@ function handleStage1Click(o) {
       enterSinkGame();
       break;
     case 'recycle':
-      roomPopup = '아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!';
-      roomPopupT = 180;
+      roomPopup = "'아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!'";
+      roomPopupT = 120;
       break;
     case 'computer':
-      roomPopup = '조금 이따 게임하려고 켜둔 거야.';
-      roomPopupT = 180;
+      roomPopup = "'조금 이따 게임하려고 켜둔 거야.'";
+      roomPopupT = 120;
       break;
     case 'tv':
-      roomBubble = '9시 뉴스 봐야 해!';
-      roomBubbleT = 180;
+      roomPopup = "'9시 뉴스는 봐야지!'";
+      roomPopupT = 120;
       break;
     case 'light':
       // 화면 암전 5초 후 팝업
@@ -538,7 +559,7 @@ function labelOf(id) {
 
 function roomKeyPressed() {
   if (roomEnding) { enterRoom(); return; }
-  if (drowned) { enterRoom(); return; }
+  if (drowned) { seenEndingStages = new Set(); enterRoom(); return; }
 }
 
 // ── 엔딩 ──
