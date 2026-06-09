@@ -98,4 +98,4 @@ function cutoonAdvance() {
 }
 
 function cutoonKeyPressed()   { cutoonAdvance(); }
-function cutoonMousePressed() { cutoonAdvance(); }
+function cutoonMousePressed() { cutoonAdvance(); } 
