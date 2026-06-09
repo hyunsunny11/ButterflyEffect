@@ -96,12 +96,9 @@ function nextCorrectId() {
 
 function isObjEnabled(o) {
   if (o.id === 'door') return true;
-  let idx = ROOM_ORDER.indexOf(o.id);
-  if (idx < solvedCount) return false;          // 이미 처리됨
   if (solvedCount >= ROOM_ORDER.length) return false; // 암전
-  // 텀블러: 자기 차례(=3단계)가 오기 전엔 순수 장식. 호버/클릭/페널티 모두 없음.
-  if (o.id === 'tumbler' && solvedCount !== ROOM_ORDER.indexOf('tumbler')) return false;
-  return true;
+  // 현재 차례 오브젝트만 활성화
+  return o.id === ROOM_ORDER[solvedCount];
 }
 
 function isBlackout() { return solvedCount >= ROOM_ORDER.length; }
@@ -237,6 +234,21 @@ function drawStageBackground() {
 
 function drawRoomObject(o) {
   let hovered = (roomHoverId === o.id);
+
+  // 현관문: 항상 점멸 효과 (호버 여부 무관)
+  if (o.id === 'door' && !isBlackout()) {
+    let pulse = abs(sin(frameCount * 0.05));
+    let pa = 20 + pulse * 35;
+    push(); rectMode(CENTER); noFill();
+    for (let g = 3; g >= 1; g--) {
+      stroke(255, 220, 120, pa / g);
+      strokeWeight(g * 3);
+      rect(o.x, o.y, o.w + g * 4, o.h + g * 4, 8);
+    }
+    noStroke(); fill(255, 235, 150, pa * 0.6); rect(o.x, o.y, o.w, o.h, 6);
+    pop();
+  }
+
   if (!hovered) { if (roomDebugBoxes) drawDebugBox(o); return; }
   push(); rectMode(CENTER); noFill();
   let warm = (isBlackout() && o.id === 'door');
@@ -290,6 +302,9 @@ function drawRoomHud() {
   fill(isBlackout() ? color(120, 110, 90) : color(235, 235, 245));
   textAlign(LEFT, TOP); textStyle(BOLD); textSize(14);
   text('해결: ' + solvedCount + ' / 6', 14, 12);
+  textStyle(NORMAL); textSize(11);
+  fill(isBlackout() ? color(100, 90, 70) : color(180, 180, 190));
+  text('리셋하기: R키', 14, 30);
   textStyle(NORMAL);
 
   // TV 위 ~ 전등 사이 단계별 메시지 (solvedCount 0~5, 6은 암전이라 표시 안 함)
@@ -305,12 +320,13 @@ function drawRoomHud() {
     const msg = STAGE_MSGS[solvedCount];
     // TV 오른쪽 끝(373)과 전등(562) 사이 중앙, TV 상단(175) 근처
     const mx = 330, my = 80;
-    rectMode(CENTER); textSize(12); textAlign(CENTER, CENTER);
-    const tw = max(140, textWidth(msg) + 24);
-    fill(20, 20, 26, 180);
-    rect(mx, my, tw, 28, 6);
+    rectMode(CENTER); textSize(15); textStyle(BOLD); textAlign(CENTER, CENTER);
+    const tw = max(160, textWidth(msg) + 32);
+    fill(20, 20, 26, 210);
+    rect(mx, my, tw, 34, 6);
     fill(255, 240, 180);
     text(msg, mx, my);
+    textStyle(NORMAL);
   }
 
   // 중단부 팝업

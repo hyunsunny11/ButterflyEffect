@@ -162,6 +162,16 @@ function mousePressed() {
 }
 
 function keyPressed() {
+  // R키: 언제든 타이틀로 리셋
+  if (key === 'r' || key === 'R' || key === 'ㄱ') {
+    if (typeof introSound !== 'undefined' && introSound && introSound.isPlaying()) {
+      introSound.stop();
+    }
+    gameState = 'title';
+    enterTitle();
+    return;
+  }
+
   switch (gameState) {
     case 'title':
       titleKeyPressed();

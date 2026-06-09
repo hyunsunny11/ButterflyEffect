@@ -11,9 +11,7 @@
 
 // ── 원작 상수 (그대로) ──
 const SINK_SUCCESS_ZONE = 10;
-const SINK_SPD_DEFAULT = 5.655;
-const SINK_SPD_FAIL1   = 7.917;
-const SINK_SPD_FAIL2   = 10.179;
+const SINK_SPD_DEFAULT = 3;
 const SINK_PIX = 3; // 도트 크기 (680x480로 줄며 4→3)
 
 // ── 원작 게임 영역(600x600)을 우리 화면에 배치하기 위한 변환 ──
@@ -202,8 +200,7 @@ function sink_tryLock() {
   return;
 }
   sink_chance--;
-  if (sink_chance === 2) sink_speed = SINK_SPD_FAIL1;
-  else if (sink_chance === 1) sink_speed = SINK_SPD_FAIL2;
+  sink_speed *= 1.45;
   for (let i = 0; i < 80; i++) {
     sink_particles.push({ x: 370, y: 280, vx: random(-8,8), vy: random(-8,8), life: random(20,45) });
   }
