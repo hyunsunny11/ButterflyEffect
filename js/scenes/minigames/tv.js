@@ -126,12 +126,23 @@ function updateTV() {
   tv_drawSparks();
   tv_drawUI(solved);
 
-  if (tv_phase === 'play' && tv_unlocked && (tv_plug.y - tv_plug.hy) > 90) {
-    tv_phase = 'win'; tv_winAt = millis();
+ if (tv_phase === 'play' && tv_unlocked && (tv_plug.y - tv_plug.hy) > 90) {
+  tv_phase = 'win';
+  tv_winAt = millis();
+
+  if (minigameSuccessSound) {
+    minigameSuccessSound.play();
   }
-  if (tv_phase === 'play' && tv_remain <= 0) {
-    tv_phase = 'fail'; tv_failAt = millis();
+}
+
+if (tv_phase === 'play' && tv_remain <= 0) {
+  tv_phase = 'fail';
+  tv_failAt = millis();
+
+  if (minigameFailSound) {
+    minigameFailSound.play();
   }
+}
 
   if (tv_phase === 'win')  tv_drawWin();
   if (tv_phase === 'fail') tv_drawFail();

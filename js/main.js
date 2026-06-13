@@ -2,6 +2,11 @@
 // 여기에는 p5의 "예약 함수"만 둡니다: setup / draw / mousePressed / keyPressed.
 // 이 네 함수는 프로젝트 전체에서 딱 하나씩만 존재할 수 있으므로,
 // 실제 로직은 각 씬 파일에 두고 여기서는 gameState를 보고 분배(교통정리)만 합니다.
+let doomSound;
+let waterSound;
+let underTheSeaSound;
+let prevRoomHoverId = null;
+let mouseoverSound;
 
 function preload() {
   introSound           = loadSound('assets/sounds/intro.mp3');
@@ -9,7 +14,11 @@ function preload() {
   minigameFailSound    = loadSound('assets/sounds/minigame_f.mp3');
   errorSound           = loadSound('assets/sounds/error.mp3');
   wasteSound           = loadSound('assets/sounds/waste.mp3');
-  sink_waterSound      = loadSound('assets/sounds/water.mp3');
+  sink_waterSound      = loadSound('assets/sounds/sink.mp3');
+  doomSound            = loadSound('assets/sounds/doom.mp3');
+  waterSound           = loadSound('assets/sounds/water.mp3');
+  underTheSeaSound     = loadSound('assets/sounds/underthesea.mp3');
+  mouseoverSound       = loadSound('assets/sounds/mouseover.mp3');
 }
 
 // ─────────────────────────────────────────────

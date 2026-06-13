@@ -52,7 +52,12 @@ function enterSinkGame() {
     sink_pipeBuffer.pixelDensity(1);
     sink_renderStaticPipes();
   }
-  if (sink_waterSound && !sink_waterSound.isPlaying()) {
+  if (waterSound && waterSound.isPlaying()) {
+  waterSound.stop();
+}
+
+if (sink_waterSound) {
+  sink_waterSound.stop();
   sink_waterSound.loop();
 }
 }

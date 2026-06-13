@@ -165,16 +165,25 @@ function updateComputer() {
   cm_shake *= 0.86;
 
   // 승리 판정: 더 등장할 팝업 없음 + 화면에 남은 팝업 없음
-  if (cm_phase === 'play' && cm_spawned >= cm_budget &&
-      cm_queue.length === 0 && cm_popups.length === 0) {
-    cm_phase = 'win';
-    cm_winAt = millis();
+ if (cm_phase === 'play' && cm_spawned >= cm_budget &&
+    cm_queue.length === 0 && cm_popups.length === 0) {
+  cm_phase = 'win';
+  cm_winAt = millis();
+
+  if (minigameSuccessSound) {
+    minigameSuccessSound.play();
   }
-  // 실패 판정: 시간 초과
-  if (cm_phase === 'play' && cm_remain <= 0) {
-    cm_phase = 'fail';
-    cm_failAt = millis();
+}
+
+// 실패 판정
+if (cm_phase === 'play' && cm_remain <= 0) {
+  cm_phase = 'fail';
+  cm_failAt = millis();
+
+  if (minigameFailSound) {
+    minigameFailSound.play();
   }
+}
 
   if (cm_phase === 'win') drawWin();
   if (cm_phase === 'fail') drawFail();

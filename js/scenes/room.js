@@ -165,13 +165,27 @@ function updateRoom() {
   if (waterActive()) {
     let elapsed = frameCount - roomEnterFrame;
     if (!waterStarted && elapsed >= WATER_DELAY) {
-      waterStarted = true;
-      waterStartFrame = frameCount;
-    }
+  waterStarted = true;
+  waterStartFrame = frameCount;
+
+  if (waterSound && !waterSound.isPlaying()) {
+    waterSound.loop();
+  }
+}
     if (waterStarted) {
       let we = frameCount - waterStartFrame;
       waterLevel = constrain(we / WATER_RISE, 0, 1);
-      if (waterLevel >= 1) { drowned = true; }
+      if (waterLevel >= 1) {
+  drowned = true;
+
+  if (waterSound && waterSound.isPlaying()) {
+    waterSound.stop();
+  }
+
+  if (underTheSeaSound && !underTheSeaSound.isPlaying()) {
+    underTheSeaSound.loop();
+  }
+}
     }
   }
 
@@ -197,6 +211,14 @@ function updateRoom() {
       roomHoverId = o.id;
     }
   }
+  if (roomHoverId && roomHoverId !== prevRoomHoverId) {
+  if (mouseoverSound) {
+    mouseoverSound.stop();
+    mouseoverSound.play();
+  }
+}
+
+  prevRoomHoverId = roomHoverId;
 
   // ── 드로잉 ──
   drawStageBackground();
@@ -453,7 +475,14 @@ function drawStarfish(x, y, c) {
 // ── 입력 ──
 function roomMousePressed() {
   if (roomEnding) { enterRoom(); return; }
-  if (drowned) { seenEndingStages = new Set(); enterRoom(); return; }
+  if (drowned) {
+  if (underTheSeaSound && underTheSeaSound.isPlaying()) {
+    underTheSeaSound.stop();
+  }
+  seenEndingStages = new Set();
+  enterRoom();
+  return;
+}
   if (lightDarkT > 0) return; // 암전 중엔 입력 무시
 
   let mx = vmouseX(), my = vmouseY();
@@ -528,11 +557,20 @@ function launchMinigameFor(id) {
 function handleStage1Click(o) {
   switch (o.id) {
     case 'sink':
-      // 수도꼭지 미니게임으로 이동 (물 페널티 멈춤). 클리어 시 sinkComplete()가 1단계 완료 처리.
-      waterStarted = false; waterLevel = 0; drowned = false;
-      gameState = 'minigame_sink';
-      enterSinkGame();
-      break;
+  if (waterSound && waterSound.isPlaying()) {
+    waterSound.stop();
+  }
+
+  if (sink_waterSound && !sink_waterSound.isPlaying()) {
+    sink_waterSound.loop();
+  }
+
+  waterStarted = false;
+  waterLevel = 0;
+  drowned = false;
+  gameState = 'minigame_sink';
+  enterSinkGame();
+  break;
     case 'recycle':
       roomPopup = "'아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!'";
       roomPopupT = 120;
@@ -559,7 +597,14 @@ function labelOf(id) {
 
 function roomKeyPressed() {
   if (roomEnding) { enterRoom(); return; }
-  if (drowned) { seenEndingStages = new Set(); enterRoom(); return; }
+  if (drowned) {
+  if (underTheSeaSound && underTheSeaSound.isPlaying()) {
+    underTheSeaSound.stop();
+  }
+  seenEndingStages = new Set();
+  enterRoom();
+  return;
+}
 }
 
 // ── 엔딩 ──
@@ -576,10 +621,17 @@ const ENDINGS = [
 function showEnding(stage) {
   // 0단계 → 불타는 지구 엔딩 씬
   if (stage === 0) {
-    gameState = 'ending_earth';
-    enterEarthEnding();
-    return;
+  if (waterSound && waterSound.isPlaying()) {
+    waterSound.stop();
   }
+  if (doomSound) {
+    doomSound.play();
+  }
+
+  gameState = 'ending_earth';
+  enterEarthEnding();
+  return;
+}
   // 1단계 → 펭귄 단결 엔딩 씬
   if (stage === 1) {
     gameState = 'ending_penguin';
