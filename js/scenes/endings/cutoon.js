@@ -8,6 +8,10 @@
 // 각 엔딩의 enterXxxEnding() 에서 이 함수를 호출하기만 하면 됨.
 // 키/클릭 → 다음 컷으로, 마지막 컷 이후 → 방으로 복귀.
 
+let ct_voicePaths = [];
+let ct_voices = [];
+let ct_voiceLoaded = [];
+
 let ct_images     = [];   // p5 Image 객체 배열
 let ct_paths      = [];   // 경로 배열 (로딩용)
 let ct_page       = 0;    // 현재 페이지 (0-based)
@@ -16,7 +20,7 @@ let ct_loaded     = [];   // 각 이미지 로드 완료 여부
 let ct_inputLock  = false; // 빠른 연속 입력 방지
 
 /* ── 씬 진입 ── */
-function enterCutoon(imageList, returnStage) {
+function enterCutoon(imageList, returnStage, voiceList) {
   ct_paths    = imageList;
   ct_page     = 0;
   ct_retStage = returnStage;
@@ -32,6 +36,46 @@ function enterCutoon(imageList, returnStage) {
       img => { ct_images[idx] = img; ct_loaded[idx] = true; },
       ()  => { ct_loaded[idx] = true; }  // 로드 실패해도 진행
     );
+  }
+  ct_voicePaths = voiceList || [];
+ct_voices = [];
+ct_voiceLoaded = [];
+
+for (let i = 0; i < ct_voicePaths.length; i++) {
+  ct_voiceLoaded.push(false);
+
+  if (!ct_voicePaths[i]) {
+    ct_voices[i] = null;
+    ct_voiceLoaded[i] = true;
+    continue;
+  }
+
+  const idx = i;
+  ct_voices[idx] = loadSound(
+    ct_voicePaths[idx],
+    () => {
+      ct_voiceLoaded[idx] = true;
+      if (idx === ct_page) playCutoonVoice(ct_page);
+    },
+    () => {
+      console.log('음성 로드 실패:', ct_voicePaths[idx]);
+      ct_voiceLoaded[idx] = true;
+    }
+  );
+}
+}
+function stopCutoonVoice() {
+  for (let s of ct_voices) {
+    if (s && s.isPlaying()) s.stop();
+  }
+}
+
+function playCutoonVoice(page) {
+  stopCutoonVoice();
+
+  let voice = ct_voices[page];
+  if (voice && ct_voiceLoaded[page]) {
+    voice.play();
   }
 }
 
@@ -80,10 +124,13 @@ function cutoonAdvance() {
   if (!ct_loaded[ct_page]) return;
 
   if (ct_page < ct_paths.length - 1) {
-    ct_page++;
-    ct_inputLock = true;
-    setTimeout(() => { ct_inputLock = false; }, 300);
-  } else {
+  ct_page++;
+  playCutoonVoice(ct_page);
+
+  ct_inputLock = true;
+  setTimeout(() => { ct_inputLock = false; }, 300);
+} else {
+  stopCutoonVoice();
     // 마지막 컷 → 복귀
     if (ct_retStage === -1) {
       // 클리어 엔딩 → 게임 오버(엔딩) 화면
