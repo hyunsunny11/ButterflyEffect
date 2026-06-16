@@ -11,10 +11,11 @@ function enterEarthEnding() {
     0,
     [
       null,
-      'assets/sounds/earth_1.wav',
       'assets/sounds/earth_2.wav',
       'assets/sounds/earth_3.wav',
-      'assets/sounds/earth_4.wav'
+      'assets/sounds/earth_4.wav',
+      'assets/sounds/earth_5.wav'
+      
     ]
   );
 }
