@@ -137,10 +137,14 @@ function cutoonAdvance() {
       gameState = 'gameover';
       enterGameOver();
     } else {
-      solvedCount = ct_retStage;
-      gameState   = 'room';
-      enterRoom(ct_retStage);
-    }
+  solvedCount = ct_retStage;
+  gameState   = 'room';
+  enterRoom(ct_retStage);
+
+  if (ct_retStage === 3 && newsSound) {
+    newsSound.play();
+  }
+}
   }
 }
 

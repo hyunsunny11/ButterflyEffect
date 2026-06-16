@@ -7,6 +7,7 @@ let waterSound;
 let underTheSeaSound;
 let prevRoomHoverId = null;
 let mouseoverSound;
+let newsSound;
 
 function preload() {
   introSound           = loadSound('assets/sounds/intro.mp3');
@@ -19,6 +20,7 @@ function preload() {
   waterSound           = loadSound('assets/sounds/water.mp3');
   underTheSeaSound     = loadSound('assets/sounds/underthesea.mp3');
   mouseoverSound       = loadSound('assets/sounds/mouseover.mp3');
+  newsSound            = loadSound('assets/sounds/news.wav');
 }
 
 // ─────────────────────────────────────────────
