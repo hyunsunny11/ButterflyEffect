@@ -25,6 +25,22 @@ function preload() {
   recycleWrongSound    = loadSound('assets/sounds/recycle_wrong.mp3');
 }
 
+// 현재 재생 중일 수 있는 모든 사운드를 한 번에 정지.
+// R키로 어느 화면에서든 타이틀로 즉시 리셋될 때, 진행 중이던 사운드가
+// 멈추지 않고 계속 재생되는 문제를 막기 위해 사용.
+function stopAllSounds() {
+  const sounds = [
+    introSound, minigameSuccessSound, minigameFailSound, errorSound,
+    wasteSound, sink_waterSound, doomSound, waterSound, underTheSeaSound,
+    mouseoverSound, newsSound, recycleCorrectSound, recycleWrongSound,
+  ];
+  for (const s of sounds) {
+    if (s && s.isPlaying()) s.stop();
+  }
+  // 컷툰(엔딩) 페이지별 음성도 별도 배열로 관리되므로 함께 정지
+  if (typeof stopCutoonVoice === 'function') stopCutoonVoice();
+}
+
 // ─────────────────────────────────────────────
 // [개발용 스위치] 인트로 스킵
 //   DEV_SKIP_INTRO = true  → 인트로를 건너뛰고 바로 방에서 시작
@@ -183,9 +199,7 @@ function mousePressed() {
 function keyPressed() {
   // R키: 언제든 타이틀로 리셋
   if (key === 'r' || key === 'R' || key === 'ㄱ') {
-    if (typeof introSound !== 'undefined' && introSound && introSound.isPlaying()) {
-      introSound.stop();
-    }
+    stopAllSounds();
     gameState = 'title';
     enterTitle();
     return;
