@@ -15,3 +15,5 @@ let minigameFailSound   = null;
 let errorSound          = null;
 let wasteSound          = null;
 let sink_waterSound     = null;
+let recycleCorrectSound = null; // 분리수거: 올바른 오브젝트를 받았을 때
+let recycleWrongSound   = null; // 분리수거: 틀린 오브젝트를 받았을 때

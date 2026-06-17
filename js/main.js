@@ -21,6 +21,8 @@ function preload() {
   underTheSeaSound     = loadSound('assets/sounds/underthesea.mp3');
   mouseoverSound       = loadSound('assets/sounds/mouseover.mp3');
   newsSound            = loadSound('assets/sounds/news.wav');
+  recycleCorrectSound  = loadSound('assets/sounds/recycle_correct.mp3');
+  recycleWrongSound    = loadSound('assets/sounds/recycle_wrong.mp3');
 }
 
 // ─────────────────────────────────────────────

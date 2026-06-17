@@ -198,12 +198,17 @@ function rc_updateItems() {
 }
 
 function rc_handleCatch(item) {
-  if (typeof wasteSound !== 'undefined' && wasteSound) wasteSound.play();
-  if (item.type === '음식물') { rc_score -= 1; return; }
+  if (item.type === '음식물') {
+    if (typeof recycleWrongSound !== 'undefined' && recycleWrongSound) recycleWrongSound.play();
+    rc_score -= 1;
+    return;
+  }
   if (item.type === rc_basket.type) {
+    if (typeof recycleCorrectSound !== 'undefined' && recycleCorrectSound) recycleCorrectSound.play();
     rc_score += 1;
     rc_basket.type = rc_randomBinType(rc_basket.type);  // 방금 담은 것과 다른 타입으로
   } else {
+    if (typeof recycleWrongSound !== 'undefined' && recycleWrongSound) recycleWrongSound.play();
     rc_score -= 1;
   }
 }
