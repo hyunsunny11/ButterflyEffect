@@ -26,7 +26,7 @@ let tv_grab     = null;
 let tv_hoverNode = -1;
 let tv_plug     = null;
 let tv_sparks   = [];
-let tv_phase    = 'play';
+let tv_phase    = 'tutorial'; // 'tutorial' | 'play' | 'win' | 'fail'
 let tv_winAt    = 0;
 let tv_failAt   = 0;
 let tv_startMs  = 0;
@@ -34,9 +34,27 @@ let tv_remain   = 7;
 let tv_started  = false;
 let tv_winAlpha = 0, tv_winFadeAmt = 3;
 let tv_failAlpha = 0, tv_failFadeAmt = 3;
+let tv_tutFlash = 0;     // 튜토리얼 화면 깜빡임 애니메이션 카운터
 
-/* ── 씬 진입 ── */
+/* ── 씬 진입: 튜토리얼부터 ── */
 function enterTV() {
+  tv_phase = 'tutorial';
+  tv_cables = [];
+  tv_unlocked = false;
+  tv_grab = null;
+  tv_hoverNode = -1;
+  tv_sparks = [];
+  tv_plug = { x: 566, hy: 268, y: 268 };
+  tv_winAt = 0;
+  tv_failAt = 0;
+  tv_started = false;
+  tv_winAlpha = 0;  tv_winFadeAmt = 3;
+  tv_failAlpha = 0; tv_failFadeAmt = 3;
+  tv_tutFlash = 0;
+}
+
+/* 실제 게임 시작 */
+function startActualTV() {
   tv_cables = [];
   const order = tv_shuffleDerangement(4);
   for (let i = 0; i < 4; i++) {
@@ -91,12 +109,18 @@ function updateTV() {
   textFont(TV_FONT);
   textStyle(BOLD);
 
+  tv_drawBackground();
+  tv_drawPanel();
+
+  if (tv_phase === 'tutorial') {
+    tv_drawTutorial();
+    pop();
+    return;
+  }
+
   if (tv_phase === 'play') {
     tv_remain = max(0, tv_timeLimit - (millis() - tv_startMs) / 1000);
   }
-
-  tv_drawBackground();
-  tv_drawPanel();
 
   let solved = 0;
   for (let i = 0; i < tv_cables.length; i++) {
@@ -151,6 +175,11 @@ if (tv_phase === 'play' && tv_remain <= 0) {
 
 /* ── 입력 ── */
 function tvMousePressed() {
+  if (tv_phase === 'tutorial') {
+    const { bx, by, bw, bh } = tv_tutBtnRect();
+    if (tv_inRect(vmouseX(), vmouseY(), bx, by, bw, bh)) startActualTV();
+    return;
+  }
   if (tv_phase === 'win')  { if (millis() - tv_winAt  > 900) tv_onClear(); return; }
   if (tv_phase === 'fail') {
   if (millis() - tv_failAt > 300) tv_onFail();
@@ -191,6 +220,7 @@ function tvMouseReleased() {
 }
 
 function tvKeyPressed() {
+  if (tv_phase === 'tutorial') { startActualTV(); return; }
   if (tv_phase === 'win' && millis() - tv_winAt > 900) {
     tv_onClear();   // 연출 후 아무 키 → 클리어
   }
@@ -204,7 +234,7 @@ function tv_onClear() {
   roomReenterAfterMinigame();
 }
 function tv_onFail() {
-  enterTV();                // 데모: 재시작. 실제 엔딩 분기로 교체 가능
+  startActualTV();          // 튜토리얼 없이 재시작 (다른 미니게임들과 동일한 패턴)
 }
 
 /* ===================== 그리기 (모두 tv_ 접두사) ===================== */
@@ -388,6 +418,53 @@ function tv_drawUI(solved) {
   fill(220); text('정렬 ' + solved + ' / 4', GW - 130, 40);
   fill(low && (frameCount % 16 < 8) ? color(255, 90, 90) : color(255));
   text('⏱ ' + nf(tv_remain, 1, 1), GW - 24, 40);
+}
+
+/* 튜토리얼 버튼 좌표 — tv_drawTutorial 과 tvMousePressed 가 공유 */
+function tv_tutBtnRect() {
+  const pw = 460, ph = 210;
+  const px = GW / 2 - pw / 2, py = GH - ph - 16;
+  const bw = 130, bh = 32;
+  const bx = GW / 2 - bw / 2, by = py + ph - bh - 14;
+  return { px, py, pw, ph, bx, by, bw, bh };
+}
+
+/* ── 튜토리얼 화면 ── */
+function tv_drawTutorial() {
+  push();
+  rectMode(CORNER); // main.js 전역 기본값(CENTER)과 무관하게 이 함수 안에서는 항상 CORNER로 그림
+
+  tv_tutFlash = (tv_tutFlash + 1) % 70;
+
+  const { px, py, pw, ph, bx, by, bw, bh } = tv_tutBtnRect();
+
+  noStroke(); fill(0, 110); rect(px + 5, py + 6, pw, ph, 8);
+  fill(22, 28, 40); rect(px, py, pw, ph, 8);
+  fill(30, 38, 52); rect(px + 2, py + 2, pw - 4, ph - 4, 7);
+
+  // 타이틀바
+  fill(20, 90, 50); noStroke(); rect(px + 3, py + 3, pw - 6, 28, 5);
+  fill(255); textAlign(LEFT, CENTER); textSize(14); textStyle(BOLD);
+  text('📖  게임 방법', px + 12, py + 17);
+  textStyle(BOLD);
+
+  // 본문
+  fill(210, 240, 220); textAlign(CENTER, TOP); textSize(14);
+  text('전선 4개가 엉켜 있어요!',                          GW / 2, py + 38);
+  text('각 전선의 매듭(동그라미)을 드래그해서',             GW / 2, py + 60);
+  text('같은 색 줄에 일직선으로 맞춰주세요.',               GW / 2, py + 82);
+  text('4개를 모두 맞추면 플러그를 아래로 뽑으세요.',       GW / 2, py + 104);
+  text('제한 시간 안에 끝내야 합니다!',                     GW / 2, py + 126);
+
+  // 시작 버튼
+  const btnHot = tv_inRect(vmouseX(), vmouseY(), bx, by, bw, bh);
+  fill(btnHot ? color(60, 210, 120) : color(30, 150, 80));
+  noStroke(); rect(bx, by, bw, bh, 5);
+  fill(255); textAlign(CENTER, CENTER); textSize(14); textStyle(BOLD);
+  text('시작하기! 🚀', bx + bw / 2, by + bh / 2);
+  textStyle(BOLD);
+
+  pop();
 }
 
 function tv_drawWin() {

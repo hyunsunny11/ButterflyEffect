@@ -12,7 +12,7 @@
 //     - 분리수거(recycle): "아… 분리수거 좀 귀찮은데, 이건 조금 이따 하자!" 팝업
 //     - 컴퓨터(computer): "조금 이따 게임하려고 켜둔 거야." 팝업
 //     - TV(tv): "9시 뉴스 봐야 해!" 말풍선 (TV 위)
-//     - 조명(light): 화면 암전 → 5초 후 "불은 나갈 때 끄도록 하자…" 팝업 후 복귀
+//     - 조명(light): 화면 암전 → 3초 후 "불은 나갈 때 끄도록 하자…" 팝업 후 복귀
 //     - 현관문(door): 그 시점 단계 엔딩 (0단계=지구멸망)
 //   물 페널티(1단계 한정):
 //     - 진입 5초 후 물이 화면 하단부터 차오르기 시작
@@ -265,8 +265,8 @@ function drawStageBackground() {
 function drawRoomObject(o) {
   let hovered = (roomHoverId === o.id);
 
-  // 현관문: 항상 점멸 효과 (호버 여부 무관)
-  if (o.id === 'door' && !isBlackout()) {
+  // 현관문: 해당 단계 컷툰을 아직 안 봤을 때만 점멸 효과
+  if (o.id === 'door' && !isBlackout() && !seenEndingStages.has(solvedCount)) {
     let pulse = abs(sin(frameCount * 0.05));
     let pa = 20 + pulse * 35;
     push(); rectMode(CENTER); noFill();
@@ -334,7 +334,7 @@ function drawRoomHud() {
   text('해결: ' + solvedCount + ' / 6', 14, 12);
   textStyle(NORMAL); textSize(11);
   fill(isBlackout() ? color(100, 90, 70) : color(180, 180, 190));
-  text('리셋하기: R키', 14, 30);
+  text('맨 처음으로 돌아가기: R키', 14, 30);
   textStyle(NORMAL);
 
   // TV 위 ~ 전등 사이 단계별 메시지 (solvedCount 0~5, 6은 암전이라 표시 안 함)
@@ -350,7 +350,7 @@ function drawRoomHud() {
     const msg = STAGE_MSGS[solvedCount];
     // TV 오른쪽 끝(373)과 전등(562) 사이 중앙, TV 상단(175) 근처
     const mx = 330, my = 80;
-    rectMode(CENTER); textSize(15); textStyle(BOLD); textAlign(CENTER, CENTER);
+    rectMode(CENTER); textSize(20); textStyle(BOLD); textAlign(CENTER, CENTER);
     const tw = max(160, textWidth(msg) + 32);
     fill(20, 20, 26, 210);
     rect(mx, my, tw, 34, 6);
@@ -405,6 +405,8 @@ function drawDrowned() {
   }
   // 바다생물 (코드 픽셀아트)
   drawSeaCreatures();
+  // 물방울 (바닥에서 위로 계속 솟아오름)
+  drawRisingBubbles();
   // 안내
   fill(255, 255, 255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(26);
   text('집이 물에 잠겼습니다', GW / 2, GH / 2 - 20);
@@ -416,59 +418,185 @@ function drawDrowned() {
   pop();
 }
 
-// 고래 + 물고기 + 불가사리 픽셀아트 (떠다님)
+// 물방울: 바닥에서 솟아 위로 떠오르다 화면 위에서 사라지고 다시 바닥에서 리스폰.
+// i번째 물방울마다 x좌표/속도/크기/위상을 고정 시드로 부여해 자연스럽게 흩어지게 함.
+const BUBBLE_COUNT = 14;
+function drawRisingBubbles() {
+  push(); noStroke(); rectMode(CENTER);
+  for (let i = 0; i < BUBBLE_COUNT; i++) {
+    let seedX = (i * 53) % GW + (i % 3) * 17;            // 칸마다 다른 x
+    let speed = 0.9 + (i % 5) * 0.35;                     // 칸마다 다른 상승 속도
+    let size = PS * (0.6 + (i % 3) * 0.3);                // 칸마다 다른 크기
+    let cycle = GH + 60;                                  // 한 바퀴 도는 거리(화면 높이+여유)
+    let travelled = (frameCount * speed + i * 71) % cycle;
+    let by = GH - travelled;                              // 바닥(GH)에서 위로
+    let bx = seedX + sin(frameCount * 0.04 + i) * 6;       // 살짝 좌우로 흔들림
+    // 화면 위쪽으로 갈수록 옅어지며 사라짐
+    let alpha = travelled < cycle - 40 ? 160 : map(travelled, cycle - 40, cycle, 160, 0);
+    fill(225, 245, 255, alpha);
+    rect(bx, by, size, size);
+    fill(255, 255, 255, alpha * 0.7);
+    rect(bx - size * 0.2, by - size * 0.2, size * 0.35, size * 0.35); // 하이라이트
+  }
+  pop();
+}
+
+// ── 픽셀맵 헬퍼: 2D 배열(문자 1글자=1색)을 PS 격자로 찍어 그림 ──
+// rows: 문자열 배열. map: 문자 → 색상(p5 color 또는 [r,g,b] 또는 [r,g,b,a]). '.'은 항상 빈칸.
+function drawPixelMap(rows, map, originX, originY) {
+  push();
+  rectMode(CORNER); // 각 칸을 좌상단(originX+c*PS, originY+r*PS) 기준으로 채움
+  for (let r = 0; r < rows.length; r++) {
+    let row = rows[r];
+    for (let c = 0; c < row.length; c++) {
+      let ch = row[c];
+      if (ch === '.' || !map[ch]) continue;
+      let col = map[ch];
+      if (Array.isArray(col)) fill(col[0], col[1], col[2], col[3] !== undefined ? col[3] : 255);
+      else fill(col);
+      rect(originX + c * PS, originY + r * PS, PS, PS);
+    }
+  }
+  pop();
+}
+
+// 고래 + 가오리 + 물고기 + 불가사리 + 해초 픽셀아트 (떠다님)
 function drawSeaCreatures() {
   push(); noStroke();
-  // 고래 (왼쪽에서 천천히 이동)
-  let wx = (frameCount * 0.4) % (GW + 200) - 100;
-  let wy = GH * 0.35 + sin(frameCount * 0.02) * 12;
-  drawWhale(wx, wy);
+
+  // 해초 (바닥에 고정, 가장 먼저 그려 뒤쪽에 배치)
+  drawSeaweed(GW * 0.08, GH, 7, [40, 160, 110], 0.0);
+  drawSeaweed(GW * 0.15, GH, 5, [50, 175, 120], 0.6);
+  drawSeaweed(GW * 0.46, GH, 6, [45, 165, 115], 1.2);
+  drawSeaweed(GW * 0.55, GH, 8, [35, 150, 105], 0.3);
+  drawSeaweed(GW * 0.88, GH, 6, [50, 175, 120], 0.9);
+  drawSeaweed(GW * 0.95, GH, 4, [40, 160, 110], 1.6);
+
+  // 불가사리 (바닥에 고정)
+  drawStarfish(GW * 0.2, GH - 30, [255, 140, 90]);
+  drawStarfish(GW * 0.7, GH - 22, [255, 170, 110]);
+  drawStarfish(GW * 0.37, GH - 18, [255, 160, 130]);
+
+  // 가오리 (위쪽에서 느리게 좌우로 이동)
+  let rx = GW - ((frameCount * 0.55) % (GW + 220)) + 80;
+  let ry = GH * 0.18 + sin(frameCount * 0.025) * 10;
+  drawRay(rx, ry, [150, 130, 190]);
+
   // 물고기 떼 (오른쪽→왼쪽)
   for (let i = 0; i < 5; i++) {
     let fx = GW - ((frameCount * (1.0 + i * 0.3) + i * 130) % (GW + 120)) + 60;
     let fy = GH * 0.2 + i * 55 + sin(frameCount * 0.04 + i) * 8;
-    drawFish(fx, fy, i % 2 === 0 ? color(255, 180, 80) : color(120, 200, 220));
+    drawFish(fx, fy, i % 2 === 0 ? [255, 180, 80] : [120, 200, 220]);
   }
-  // 불가사리 (바닥에 고정)
-  drawStarfish(GW * 0.2, GH - 30, color(255, 140, 90));
-  drawStarfish(GW * 0.7, GH - 22, color(255, 170, 110));
+
+  // 고래 (왼쪽에서 천천히 이동, 가장 위에 그려 가장 앞쪽에 배치)
+  let wx = (frameCount * 0.4) % (GW + 200) - 100;
+  let wy = GH * 0.35 + sin(frameCount * 0.02) * 12;
+  drawWhale(wx, wy);
+
   pop();
 }
 
+// 고래 비트맵 (18 x 8 격자, PS=5 → 90x40px)
+const WHALE_MAP = [
+  '..................',
+  '....bb............',
+  '...bbbb...........',
+  '..bbbbbbbbbbbbbb...',
+  '.bbBBBBBBBBBBBBbb.t',
+  '.bBBBBBBBBBBBBBbbtt',
+  '..bbbeBBBBBBbbb..t.',
+  '...bbbbbbbbbb......',
+];
 function drawWhale(x, y) {
   push(); translate(x, y); noStroke();
-  fill(90, 120, 160);
-  rect(0, 0, 90, 40, 18);          // 몸통
-  triangle(85, 20, 110, 5, 110, 35); // 꼬리
-  fill(150, 175, 200);
-  rect(8, 22, 70, 16, 8);          // 배 (밝은색)
-  fill(20, 30, 45);
-  ellipse(22, 14, 6, 6);           // 눈
-  // 물줄기
-  fill(180, 220, 240, 160);
-  rect(30, -16, 4, 14); rect(36, -22, 4, 20); rect(42, -16, 4, 14);
+  drawPixelMap(WHALE_MAP, {
+    b: [90, 120, 160],        // 몸통 (어두운 부분)
+    B: [120, 150, 185],       // 몸통 (밝은 배 부분)
+    e: [20, 30, 45],          // 눈
+    t: [180, 220, 240, 170],  // 꼬리/물보라
+  }, 0, -PS * 4);
   pop();
 }
 
-function drawFish(x, y, c) {
+// 가오리 비트맵 (15 x 7 격자, PS=5 → 75x35px). 위에서 본 마름모 형태 + 꼬리.
+const RAY_MAP = [
+  '.......d.......',
+  '.....Rrrrr......',
+  '...RRRrrrrR.....',
+  '.RRRRReRRRRR.dd.',
+  '...RRRrrrrR..dd.',
+  '.....Rrrrr......',
+  '.......d.......',
+];
+function drawRay(x, y, bodyColor) {
   push(); translate(x, y); noStroke();
-  fill(c);
-  ellipse(0, 0, 26, 16);           // 몸
-  triangle(10, 0, 22, -8, 22, 8);  // 꼬리
-  fill(255); ellipse(-7, -2, 5, 5);
-  fill(0); ellipse(-7, -2, 2, 2);  // 눈
+  let darkColor = [bodyColor[0] * 0.8, bodyColor[1] * 0.8, bodyColor[2] * 0.8];
+  drawPixelMap(RAY_MAP, {
+    R: bodyColor,
+    r: darkColor,
+    e: [25, 20, 35],
+    d: [bodyColor[0] * 0.7, bodyColor[1] * 0.7, bodyColor[2] * 0.7, 200],
+  }, -PS * 7.5, -PS * 3.5);
   pop();
 }
 
-function drawStarfish(x, y, c) {
-  push(); translate(x, y); fill(c); noStroke();
-  for (let i = 0; i < 5; i++) {
-    let a = (TWO_PI / 5) * i - HALF_PI;
-    let px = cos(a) * 14, py = sin(a) * 14;
-    triangle(0, 0, cos(a - 0.4) * 6, sin(a - 0.4) * 6, px, py);
-    triangle(0, 0, cos(a + 0.4) * 6, sin(a + 0.4) * 6, px, py);
+// 물고기 비트맵 (8 x 5 격자, PS=5 → 40x25px)
+const FISH_MAP = [
+  '..t.....',
+  '.tBBBB..',
+  'eBBBBBB.',
+  '.tBBBB..',
+  '..t.....',
+];
+function drawFish(x, y, bodyColor) {
+  push(); translate(x, y); noStroke(); rectMode(CORNER);
+  let tailColor = [bodyColor[0] * 0.75, bodyColor[1] * 0.75, bodyColor[2] * 0.75];
+  drawPixelMap(FISH_MAP, {
+    B: bodyColor,
+    t: tailColor,
+    e: [255, 255, 255],
+  }, -PS * 4, -PS * 2);
+  // 눈동자
+  fill(20, 20, 30);
+  rect(-PS * 3, -PS, PS * 0.5, PS * 0.5);
+  pop();
+}
+
+// 불가사리 비트맵 (9 x 9 격자, PS=5 → 45x45px)
+const STARFISH_MAP = [
+  '....s....',
+  '...sss...',
+  's..sss..s',
+  'ss.sss.ss',
+  'sssssssss',
+  'ss.sss.ss',
+  's..sss..s',
+  '...sss...',
+  '....s....',
+];
+function drawStarfish(x, y, bodyColor) {
+  push(); translate(x, y); noStroke(); rectMode(CORNER);
+  drawPixelMap(STARFISH_MAP, {
+    s: bodyColor,
+  }, -PS * 4.5, -PS * 4.5);
+  fill(255, 255, 255, 110);
+  rect(-PS * 0.5, -PS * 0.5, PS, PS);
+  pop();
+}
+
+// 해초: 바닥(baseY)에서 위로 segments칸 쌓아 올리며, 위로 갈수록 sin파로 흔들림.
+// x: 뿌리 중심 x, baseY: 뿌리 y(바닥선), segments: 줄기 칸 수, bodyColor: 색, phase: 흔들림 위상 오프셋.
+function drawSeaweed(x, baseY, segments, bodyColor, phase) {
+  push(); noStroke(); rectMode(CORNER);
+  let darkColor = [bodyColor[0] * 0.8, bodyColor[1] * 0.8, bodyColor[2] * 0.8];
+  for (let i = 0; i < segments; i++) {
+    let sway = sin(frameCount * 0.03 + phase + i * 0.5) * (i * 1.2);
+    let segY = baseY - i * PS * 2;
+    let col = (i % 2 === 0) ? bodyColor : darkColor;
+    fill(col[0], col[1], col[2]);
+    rect(x + sway - PS, segY - PS * 2, PS * 2, PS * 2);
   }
-  fill(255, 255, 255, 120); ellipse(0, 0, 6, 6);
   pop();
 }
 
@@ -506,7 +634,7 @@ function roomMousePressed() {
     } else {
       // 조명은 순서와 무관하게 클릭하면 항상 암전 효과
       if (o.id === 'light') {
-        lightDarkT = 300;
+        lightDarkT = 180;
         return;
       }
       // 스테이지/오브젝트별 맞춤 멘트
@@ -544,8 +672,11 @@ function launchMinigameFor(id) {
       gameState = 'minigame_tv';
       enterTV();
       break;
-    // (다음) case 'computer': gameState='minigame_computer'; enterComputerGame(); break;
-    //        case 'tumbler': ... / case 'light': ...
+    case 'tumbler':
+      gameState = 'minigame_tumbler';
+      enterTumblerGame();
+      break;
+    // (다음) case 'light': ...
     default:
       // 미니게임 미연결 오브젝트: 임시 통과 (단계만 +1)
       solvedCount++;
@@ -584,8 +715,8 @@ function handleStage1Click(o) {
       roomPopupT = 120;
       break;
     case 'light':
-      // 화면 암전 5초 후 팝업
-      lightDarkT = 300;
+      // 화면 암전 3초 후 팝업
+      lightDarkT = 180;
       break;
   }
 }

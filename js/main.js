@@ -95,6 +95,9 @@ function draw() {
     case 'minigame_tv':
       updateTV();
       break;
+    case 'minigame_tumbler':
+      updateTumblerGame();
+      break;
     case 'ending_earth':
       updateEarthEnding();
       break;
@@ -147,6 +150,9 @@ function mousePressed() {
       break;
     case 'minigame_tv':
       tvMousePressed();
+      break;
+    case 'minigame_tumbler':
+      tumblerMousePressed();
       break;
     case 'ending_earth':
       earthEndingMousePressed();
@@ -207,6 +213,9 @@ function keyPressed() {
       break;
     case 'minigame_tv':
       tvKeyPressed();
+      break;
+    case 'minigame_tumbler':
+      tumblerKeyPressed();
       break;
     case 'ending_earth':
       earthEndingKeyPressed();

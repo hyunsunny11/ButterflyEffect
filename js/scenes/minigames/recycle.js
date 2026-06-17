@@ -132,14 +132,14 @@ function rc_drawTutorial() {
 
   // 본문
   fill(200, 240, 215); textAlign(CENTER, TOP); textSize(rcs(16));
-  text('바구니에 표시된 것과 같은 쓰레기를 담으세요',  rcx(RC_SRC / 2), py + rcs(38));
-  text('같은 종류 +1점 / 다른쓰레기·음식물 -1점',    rcx(RC_SRC / 2), py + rcs(62));
-  text('5점 달성하면 성공, -5점이 되면 폭발!',           rcx(RC_SRC / 2), py + rcs(86));
+  text('바구니에 표시된 종류와 같은 쓰레기를 받으세요!',  rcx(RC_SRC / 2), py + rcs(38));
+  text('같은 종류 → +1점 / 다른 종류·음식물 → -점수',    rcx(RC_SRC / 2), py + rcs(62));
+  text('5점 달성하면 성공!  -5점이 되면 폭발!',           rcx(RC_SRC / 2), py + rcs(86));
   text('← → 키로 이동하세요.',                            rcx(RC_SRC / 2), py + rcs(110));
 
   // 시작 버튼
   const { bx, by, bw, bh } = rc_tutBtnRect();
-  const btnHot = rcInRect(mouseX, mouseY, bx, by, bw, bh);
+  const btnHot = rcInRect(vmouseX(), vmouseY(), bx, by, bw, bh);
   fill(btnHot ? color(60, 210, 120) : color(30, 150, 80));
   noStroke(); rect(bx, by, bw, bh, rcs(5));
   fill(255); textAlign(CENTER, CENTER); textSize(rcs(14)); textStyle(BOLD);
@@ -199,7 +199,7 @@ function rc_updateItems() {
 
 function rc_handleCatch(item) {
   if (typeof wasteSound !== 'undefined' && wasteSound) wasteSound.play();
-  if (item.type === '음식물') { rc_score -= 2; return; }
+  if (item.type === '음식물') { rc_score -= 1; return; }
   if (item.type === rc_basket.type) {
     rc_score += 1;
     rc_basket.type = rc_randomBinType(rc_basket.type);  // 방금 담은 것과 다른 타입으로
@@ -360,7 +360,7 @@ function recycleKeyPressed() {
 function recycleMousePressed() {
   if (rc_state === 'tutorial') {
     const { bx, by, bw, bh } = rc_tutBtnRect();
-    if (rcInRect(mouseX, mouseY, bx, by, bw, bh)) startActualRecycleGame();
+    if (rcInRect(vmouseX(), vmouseY(), bx, by, bw, bh)) startActualRecycleGame();
     return;
   }
   if (rc_state === 'explode') startActualRecycleGame();

@@ -111,6 +111,9 @@ function sink_tutBtnRect() {
 
 /* ── 튜토리얼 화면 ── */
 function sink_drawTutorial() {
+  push();
+  rectMode(CORNER); // main.js 전역 기본값(CENTER)과 무관하게 이 함수 안에서는 항상 CORNER로 그림
+
   sink_tutFlash = (sink_tutFlash + 1) % 70;
 
   const cx = SINK_SRC / 2;
@@ -148,12 +151,14 @@ function sink_drawTutorial() {
   text('기회는 3번. 실패하면 속도가 빨라집니다!', sx(cx), py + ssize(112));
 
   // 시작 버튼
-  const btnHot = inRect(mouseX, mouseY, bx, by, bw, bh);
+  const btnHot = inRect(vmouseX(), vmouseY(), bx, by, bw, bh);
   fill(btnHot ? color(60, 210, 120) : color(30, 150, 80));
   noStroke(); rect(bx, by, bw, bh, ssize(5));
   fill(255); textAlign(CENTER, CENTER); textSize(ssize(14)); textStyle(BOLD);
   text('시작하기! 🚀', bx + bw / 2, by + bh / 2);
   textStyle(BOLD);
+
+  pop();
 }
 
 // ── 원작 함수들 (변경 없음) ──
@@ -203,6 +208,9 @@ function sink_renderStaticPipes() {
 }
 
 function sink_drawDynamicSink() {
+  push();
+  rectMode(CORNER); // 이 함수의 모든 rect()는 좌상단 좌표 기준으로 작성되어 있음
+
   const cx = SINK_SRC / 2, cy = 220;
 
   // 세이프 존
@@ -249,6 +257,7 @@ function sink_drawDynamicSink() {
     }
     noStroke();
   }
+  pop();
 }
 
 function sink_tryLock() {
@@ -280,11 +289,14 @@ function sink_updateParticles() {
   }
 }
 function sink_drawParticles() {
+  push();
+  rectMode(CORNER);
   noStroke();
   for (let pt of sink_particles) {
     fill(120, 220, 255, pt.life * 4);
     rect(sx(pt.x), sy(pt.y), ssize(4)+1, ssize(4)+1);
   }
+  pop();
 }
 
 function sink_drawUI() {
@@ -335,7 +347,7 @@ function sinkKeyPressed() {
 function sinkMousePressed() {
   if (sink_state === 'tutorial') {
     const { bx, by, bw, bh } = sink_tutBtnRect();
-    if (inRect(mouseX, mouseY, bx, by, bw, bh)) startActualSinkGame();
+    if (inRect(vmouseX(), vmouseY(), bx, by, bw, bh)) startActualSinkGame();
     return;
   }
   if (sink_state === 'play') sink_tryLock();

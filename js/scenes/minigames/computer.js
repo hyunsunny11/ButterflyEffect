@@ -79,27 +79,46 @@ let cm_closed = 0;       // 닫은 개수
 let cm_timeLimit = 12;   // ★ 제한 시간(초) — 난이도 조절 노브
 let cm_startMs = 0;      // 카운트다운 시작 시각(ms)
 let cm_remain = 12;      // 남은 시간(초)
-let cm_phase = 'play';   // 'play' | 'win' | 'fail'
+let cm_phase = 'tutorial'; // 'tutorial' | 'play' | 'win' | 'fail'
 let cm_winAt = 0;        // 클리어 시각(ms)
 let cm_failAt = 0;       // 시간 초과 시각(ms)
 let cm_seq = 0;          // 팝업 고유 id
 let cm_shake = 0;        // 잘못 클릭 시 흔들림 효과
 let cm_started = false;
 let cm_winAlpha = 0, cm_winFadeAmt = 3;
+let cm_tutFlash = 0;     // 튜토리얼 화면 깜빡임 애니메이션 카운터
 
-/* ── 씬 진입 ── */
+/* ── 씬 진입: 튜토리얼부터 ── */
 function enterComputer() {
+  cm_phase = 'tutorial';
   cm_popups = [];
   cm_queue = [];
   cm_deck = [];
   cm_spawned = 0;
   cm_closed = 0;
+  cm_winAt = 0;
+  cm_failAt = 0;
+  cm_seq = 0;
+  cm_shake = 0;
+  cm_started = false;
+  cm_failAlpha = 0;
+  cm_failFadeAmt = 3;
+  cm_winAlpha = 0;
+  cm_winFadeAmt = 3;
+  cm_tutFlash = 0;
+}
+
+/* 실제 게임 시작 */
+function startActualComputer() {
   cm_phase = 'play';
+  cm_popups = [];
+  cm_queue = [];
+  cm_spawned = 0;
+  cm_closed = 0;
   cm_winAt = 0;
   cm_failAt = 0;
   cm_startMs = millis();
   cm_remain = cm_timeLimit;
-  cm_seq = 0;
   cm_shake = 0;
   cm_started = true;
   cm_failAlpha = 0;
@@ -146,12 +165,19 @@ function updateComputer() {
   textFont(CM_FONT);    // 수도 잠그기 게임과 동일: monospace
   textStyle(BOLD);      // 전체 굵게 — push/pop 안이라 다른 씬에 새지 않음
 
+  drawDesktop();        // 배경 데스크톱 + 아이콘
+
+  if (cm_phase === 'tutorial') {
+    drawComputerTutorial();
+    pop();
+    return;
+  }
+
   // 제한 시간 카운트다운(플레이 중에만 감소)
   if (cm_phase === 'play') {
     cm_remain = max(0, cm_timeLimit - (millis() - cm_startMs) / 1000);
   }
 
-  drawDesktop();        // 배경 데스크톱 + 아이콘
   releaseFromQueue();   // 대기열에서 시간 된 팝업 등장
 
   // 팝업 그리기(뒤→앞)
@@ -203,6 +229,11 @@ function releaseFromQueue() {
 
 /* ── 입력 ── */
 function computerMousePressed() {
+  if (cm_phase === 'tutorial') {
+    const { bx, by, bw, bh } = cm_tutBtnRect();
+    if (inRect(vmouseX(), vmouseY(), bx, by, bw, bh)) startActualComputer();
+    return;
+  }
   if (cm_phase === 'win') {
     // 연출(900ms) 후 클릭하면 클리어
     if (millis() - cm_winAt > 900) cm_onClear();
@@ -264,6 +295,7 @@ function cm_onClear() {
  *  프레임워크 연결 시 main.js keyPressed 분배기에:
  *     case 'computer': computerKeyPressed(); break;  */
 function computerKeyPressed() {
+  if (cm_phase === 'tutorial') { startActualComputer(); return; }
   if (cm_phase === 'win' && millis() - cm_winAt > 900) {
     cm_onClear();   // 연출 후 아무 키 → 클리어
   }
@@ -277,7 +309,7 @@ function computerKeyPressed() {
  *     gameState = 'ending'; showEnding(0);   // "게임만 하다 지구가 멸망"
  *  데모에선 미니게임을 재시작한다. */
 function cm_onFail() {
-  enterComputer();
+  startActualComputer(); // 튜토리얼 없이 재시작 (다른 미니게임들과 동일한 패턴)
 }
 
 /* ===================== 그리기 헬퍼 ===================== */
@@ -399,6 +431,52 @@ function drawTaskbar() {
            : frac > 0.25 ? color(235, 200, 40)
            : color(226, 59, 59);
   fill(gc); rect(0, 0, GW * frac, 7);
+}
+
+/* 튜토리얼 버튼 좌표 — drawComputerTutorial 과 computerMousePressed 가 공유 */
+function cm_tutBtnRect() {
+  const pw = 460, ph = 200;
+  const px = GW / 2 - pw / 2, py = GH - ph - 16;
+  const bw = 130, bh = 32;
+  const bx = GW / 2 - bw / 2, by = py + ph - bh - 14;
+  return { px, py, pw, ph, bx, by, bw, bh };
+}
+
+/* ── 튜토리얼 화면 ── */
+function drawComputerTutorial() {
+  push();
+  rectMode(CORNER); // main.js 전역 기본값(CENTER)과 무관하게 이 함수 안에서는 항상 CORNER로 그림
+
+  cm_tutFlash = (cm_tutFlash + 1) % 70;
+
+  const { px, py, pw, ph, bx, by, bw, bh } = cm_tutBtnRect();
+
+  noStroke(); fill(0, 110); rect(px + 5, py + 6, pw, ph, 8);
+  fill(22, 28, 40); rect(px, py, pw, ph, 8);
+  fill(30, 38, 52); rect(px + 2, py + 2, pw - 4, ph - 4, 7);
+
+  // 타이틀바
+  fill(20, 90, 50); noStroke(); rect(px + 3, py + 3, pw - 6, 28, 5);
+  fill(255); textAlign(LEFT, CENTER); textSize(14); textStyle(BOLD);
+  text('📖  게임 방법', px + 12, py + 17);
+  textStyle(BOLD);
+
+  // 본문
+  fill(210, 240, 220); textAlign(CENTER, TOP); textSize(14);
+  text('컴퓨터 화면에 경고창과 광고가 다다닥 뜹니다!',     GW / 2, py + 40);
+  text('각 창의 ✕ 버튼을 눌러 닫으세요.',                  GW / 2, py + 62);
+  text('본문을 클릭하면 닫히지 않고 살짝 흔들리기만 해요.', GW / 2, py + 84);
+  text('제한 시간 안에 ' + cm_budget + '개를 모두 닫으면 성공!', GW / 2, py + 106);
+
+  // 시작 버튼
+  const btnHot = inRect(vmouseX(), vmouseY(), bx, by, bw, bh);
+  fill(btnHot ? color(60, 210, 120) : color(30, 150, 80));
+  noStroke(); rect(bx, by, bw, bh, 5);
+  fill(255); textAlign(CENTER, CENTER); textSize(14); textStyle(BOLD);
+  text('시작하기! 🚀', bx + bw / 2, by + bh / 2);
+  textStyle(BOLD);
+
+  pop();
 }
 
 function drawWin() {
